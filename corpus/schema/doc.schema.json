@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "R2AI corpus document",
+  "type": "object",
+  "required": [
+    "schema_version", "uid", "doc_id", "lang", "source", "url", "domain",
+    "title", "text", "norm_version", "passages", "text_len", "content_hash",
+    "dup_of", "fetch", "pubmed", "owner", "code_commit"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "uid": {"type": "string", "minLength": 1},
+    "doc_id": {"type": "string", "minLength": 1},
+    "lang": {"enum": ["vi", "zh", "en"]},
+    "source": {"type": "string"},
+    "url": {"type": "string"},
+    "domain": {"type": "string"},
+    "title": {"type": "string"},
+    "text": {"type": "string", "minLength": 1},
+    "norm_version": {"type": "string"},
+    "passages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "start", "end"],
+        "properties": {
+          "type": {"enum": ["title", "abstract", "heading", "body"]},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "text_len": {"type": "integer", "minimum": 1},
+    "content_hash": {"type": "string"},
+    "dup_of": {"type": ["string", "null"]},
+    "fetch": {"type": "object"},
+    "pubmed": {"type": ["object", "null"]},
+    "owner": {"enum": ["a", "b"]},
+    "code_commit": {"type": "string"}
+  }
+}

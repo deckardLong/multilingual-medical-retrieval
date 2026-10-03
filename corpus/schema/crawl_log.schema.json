@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "R2AI URL crawl log",
+  "type": "object",
+  "required": [
+    "uid", "id", "url", "domain", "owner", "status", "http_status", "attempt",
+    "fetched_at", "bytes", "final_url", "error", "shard"
+  ],
+  "properties": {
+    "uid": {"type": "string"},
+    "id": {"type": "integer"},
+    "url": {"type": "string"},
+    "domain": {"type": "string"},
+    "owner": {"enum": ["a", "b"]},
+    "status": {
+      "enum": [
+        "ok", "empty", "too_short", "http_error", "timeout", "blocked",
+        "lang_mismatch", "duplicate"
+      ]
+    },
+    "http_status": {"type": ["integer", "null"]},
+    "attempt": {"type": "integer", "minimum": 0},
+    "fetched_at": {"type": "string"},
+    "bytes": {"type": ["integer", "null"]},
+    "final_url": {"type": ["string", "null"]},
+    "error": {"type": ["string", "null"]},
+    "shard": {"type": ["string", "null"]}
+  }
+}

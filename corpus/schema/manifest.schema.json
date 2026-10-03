@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "R2AI corpus shard manifest",
+  "type": "object",
+  "required": [
+    "shard", "owner", "schema_version", "norm_version", "n_docs",
+    "status_counts", "lang_counts", "sha256", "created_at", "input",
+    "extractor", "code_commit"
+  ],
+  "properties": {
+    "shard": {"type": "string"},
+    "owner": {"enum": ["a", "b"]},
+    "schema_version": {"type": "string"},
+    "norm_version": {"type": "string"},
+    "n_docs": {"type": "integer", "minimum": 0},
+    "status_counts": {"type": "object", "additionalProperties": {"type": "integer"}},
+    "lang_counts": {"type": "object", "additionalProperties": {"type": "integer"}},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "created_at": {"type": "string"},
+    "input": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {"enum": ["domain_list", "id_range", "pmid_batch"]},
+        "value": {"type": "string"}
+      }
+    },
+    "extractor": {"type": "string"},
+    "code_commit": {"type": "string"},
+    "source_ids": {"type": "array", "items": {"type": "integer"}}
+  }
+}

@@ -1,0 +1,16 @@
+[crawl]
+owner = "a"
+schema_version = "1.0"
+norm_version = "n1"
+input_parquet = "corpus/raw/links_corpus.parquet"
+global_concurrency = 32
+per_domain_concurrency = 1
+requests_per_domain = 1.0
+timeout_seconds = 25
+max_response_bytes = 5000000
+max_retries = 3
+retry_backoff_seconds = 2.0
+min_text_chars = 200
+shard_docs = 20000
+progress_seconds = 5
+user_agent = "R2AI2026CorpusResearch/1.0 (respectful research crawler)"

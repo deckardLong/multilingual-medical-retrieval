@@ -1,5 +1,5 @@
 [crawl]
-owner = "a"
+owner = "b" 
 schema_version = "1.0"
 norm_version = "n1"
 input_parquet = "corpus/raw/links_corpus.parquet"

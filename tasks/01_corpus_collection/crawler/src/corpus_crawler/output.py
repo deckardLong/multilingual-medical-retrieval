@@ -138,7 +138,7 @@ class ShardWriter:
             "lang_counts": dict(lang_counts),
             "sha256": digest,
             "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "input": {"type": "domain_list", "value": "member_01.md"},
+            "input": {"type": "domain_list", "value": "member_01.md" if self.settings.owner == "a" else "member_02.md"},
             "extractor": f"trafilatura@{importlib.metadata.version('trafilatura')}",
             "code_commit": self.settings.code_commit,
             "source_ids": ids,
@@ -154,12 +154,20 @@ class ShardWriter:
                 temp_manifest.unlink()
 
     def _export_logs(self, ids: list[int]) -> None:
-        seq = _next_sequence(self.logs_dir, f"log-{self.settings.owner}-*.parquet")
-        filename = f"log-{self.settings.owner}-{seq:05d}.parquet"
-        batch_id = self.state.reserve_batch("logs", filename, None, ids)
-        rows = self.state.rows_for_ids(ids)
-        self._write_logs(self.logs_dir / filename, rows)
-        self.state.finish_batch(batch_id, "logs", ids, filename)
+        rows_by_domain: dict[str, list[int]] = {}
+        for row in self.state.rows_for_ids(ids):
+            rows_by_domain.setdefault(str(row["domain"]), []).append(int(row["id"]))
+
+        for domain, domain_ids in rows_by_domain.items():
+            seq = _next_sequence(
+                self.logs_dir,
+                f"log-{self.settings.owner}-{domain}-*.parquet",
+            )
+            filename = f"log-{self.settings.owner}-{domain}-{seq:06d}.parquet"
+            batch_id = self.state.reserve_batch("logs", filename, None, domain_ids)
+            rows = self.state.rows_for_ids(domain_ids)
+            self._write_logs(self.logs_dir / filename, rows)
+            self.state.finish_batch(batch_id, "logs", domain_ids, filename)
 
     def _write_logs(self, path: Path, rows: list[Any]) -> None:
         records = []

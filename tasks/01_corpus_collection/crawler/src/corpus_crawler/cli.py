@@ -57,7 +57,7 @@ def main() -> None:
         profile_domains(settings.input_parquet, output)
         return
 
-    state = CrawlState(settings.corpus_root / "viz" / "state-a.sqlite3")
+    state = CrawlState(settings.corpus_root / "viz" / f"state-{settings.owner}.sqlite3")
     try:
         if args.command == "status":
             total, done, pending = state.totals()

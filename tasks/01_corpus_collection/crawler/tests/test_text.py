@@ -33,7 +33,7 @@ def test_validate_doc_checks_hash_and_passage_offsets() -> None:
         "dup_of": None,
         "fetch": {"status": "ok"},
         "pubmed": None,
-        "owner": "a",
+        "owner": "b",
         "code_commit": "working-tree",
     }
-    validate_doc(doc, "a")
+    validate_doc(doc, "b")

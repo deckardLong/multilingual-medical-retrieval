@@ -60,13 +60,15 @@ def load_settings(config_path: Path | None = None) -> Settings:
         raw: dict[str, Any] = tomllib.load(stream)
     crawl = raw["crawl"]
     owner = str(crawl["owner"])
-    if owner != "a":
-        raise ValueError("This crawler is restricted to member A (owner='a').")
+    # CHO PHÉP CẢ A VÀ B:
+    if owner not in {"a", "b"}:
+        raise ValueError("Crawler owner must be 'a' or 'b'.")
 
     input_path = Path(crawl["input_parquet"])
     if not input_path.is_absolute():
         input_path = REPOSITORY_ROOT / input_path
-    domain_file = CRAWLER_ROOT / "domains_a.txt"
+    domain_file = CRAWLER_ROOT / f"domains_{owner}.txt"
+    
     domains = frozenset(
         line.strip().lower()
         for line in domain_file.read_text(encoding="utf-8").splitlines()

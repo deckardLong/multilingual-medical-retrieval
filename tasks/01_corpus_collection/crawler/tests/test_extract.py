@@ -21,7 +21,7 @@ def test_extracts_and_normalizes_vietnamese_article() -> None:
         status="ok",
         http_status=200,
         fetched_at="2026-10-02T00:00:00+07:00",
-        final_url="https://cnkang.com/example",
+        final_url="https://vinmec.com/example",
         body=html,
         error=None,
         attempts=1,
@@ -30,7 +30,7 @@ def test_extracts_and_normalizes_vietnamese_article() -> None:
     )
 
     log, doc = make_records(
-        9, "https://cnkang.com/example", "cnkang.com", result, settings
+        9, "https://vinmec.com/example", "vinmec.com", result, settings
     )
 
     assert doc is not None

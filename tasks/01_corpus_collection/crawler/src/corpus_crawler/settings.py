@@ -67,7 +67,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
     input_path = Path(crawl["input_parquet"])
     if not input_path.is_absolute():
         input_path = REPOSITORY_ROOT / input_path
-    domain_file = CRAWLER_ROOT / f"domains_{owner}.txt"
+    domain_file = CRAWLER_ROOT / f"domains_{owner}_small.txt"
     
     domains = frozenset(
         line.strip().lower()

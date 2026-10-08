@@ -1,0 +1,28 @@
+paths:
+  queries: queries/query.parquet
+  docs_glob: corpus/viz/docs/**/*.jsonl.zst
+  chunks: workspace/chunks/chunks.parquet
+  emb: workspace/index/emb.npy
+  runs_dir: workspace/runs
+chunk: {
+  target_tokens: 256,
+  overlap_tokens: 40,
+  min_chars: 40
+}
+embed: {
+  model: BAAI/bge-m3,
+  max_length: 512,
+  batch_size: 64
+}
+retrieve: {
+  top_n: 100
+}
+rerank: {
+  model: BAAI/bge-reranker-v2-m3,
+  max_length: 512,
+  batch_size: 32
+}
+select: {
+  doc_k: 10,
+  chunk_k: 10
+}

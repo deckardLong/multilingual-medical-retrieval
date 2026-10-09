@@ -3,6 +3,14 @@ owner = "a"
 schema_version = "1.0"
 norm_version = "n1"
 input_parquet = "corpus/raw/links_corpus.parquet"
+excluded_domains = [
+  "baohaiphong.vn",
+  "baotayninh.vn",
+  "khoahocphothong.vn",
+  "laodong.vn",
+  "nhathuoclongchau.com.vn",
+  "youmed.vn",
+]
 global_concurrency = 32
 per_domain_concurrency = 1
 requests_per_domain = 1.0

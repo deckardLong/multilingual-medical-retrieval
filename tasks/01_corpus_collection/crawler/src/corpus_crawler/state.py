@@ -70,10 +70,24 @@ class CrawlState:
             "SELECT value FROM metadata WHERE key='input_fingerprint'"
         ).fetchone()
         if existing is not None and existing["value"] != fingerprint:
-            raise ValueError(
-                "Input Parquet changed since this checkpoint was created. "
-                "Use a new state DB; do not delete the old checkpoint."
+            try:
+                previous_fingerprint = json.loads(existing["value"])
+            except json.JSONDecodeError:
+                previous_fingerprint = {}
+            if (
+                not isinstance(previous_fingerprint, dict)
+                or previous_fingerprint.get("size") != stat.st_size
+                or previous_fingerprint.get("mtime_ns") != stat.st_mtime_ns
+            ):
+                raise ValueError(
+                    "Input Parquet changed since this checkpoint was created. "
+                    "Use a new state DB; do not delete the old checkpoint."
+                )
+            self.connection.execute(
+                "UPDATE metadata SET value=? WHERE key='input_fingerprint'",
+                (fingerprint,),
             )
+            self.connection.commit()
         seeded = self.connection.execute(
             "SELECT value FROM metadata WHERE key='source_seeded'"
         ).fetchone()
@@ -147,9 +161,19 @@ class CrawlState:
         self.connection.commit()
         return cursor.rowcount
 
-    def claim_next(self) -> sqlite3.Row | None:
+    def claim_next(
+        self, excluded_domains: frozenset[str] = frozenset()
+    ) -> sqlite3.Row | None:
+        exclusion_clause = ""
+        parameters: tuple[object, ...] = ()
+        if excluded_domains:
+            placeholders = ",".join("?" for _ in excluded_domains)
+            exclusion_clause = f" AND domain NOT IN ({placeholders})"
+            parameters = tuple(sorted(excluded_domains))
         row = self.connection.execute(
-            "SELECT id, url, domain FROM urls WHERE status='pending' ORDER BY id LIMIT 1"
+            "SELECT id, url, domain FROM urls WHERE status='pending'"
+            f"{exclusion_clause} ORDER BY id LIMIT 1",
+            parameters,
         ).fetchone()
         if row is None:
             return None
@@ -202,14 +226,23 @@ class CrawlState:
                 ),
             )
 
-    def totals(self) -> tuple[int, int, int]:
+    def totals(
+        self, excluded_domains: frozenset[str] = frozenset()
+    ) -> tuple[int, int, int]:
+        exclusion_clause = ""
+        parameters: tuple[object, ...] = ()
+        if excluded_domains:
+            placeholders = ",".join("?" for _ in excluded_domains)
+            exclusion_clause = f" WHERE domain NOT IN ({placeholders})"
+            parameters = tuple(sorted(excluded_domains))
         row = self.connection.execute(
-            """
+            f"""
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS done,
                    SUM(CASE WHEN status!='done' THEN 1 ELSE 0 END) AS pending
-            FROM urls
-            """
+            FROM urls{exclusion_clause}
+            """,
+            parameters,
         ).fetchone()
         return int(row["total"] or 0), int(row["done"] or 0), int(row["pending"] or 0)
 
@@ -217,9 +250,17 @@ class CrawlState:
         row = self.connection.execute("SELECT 1 FROM urls LIMIT 1").fetchone()
         return row is not None
 
-    def pending_count(self) -> int:
+    def pending_count(self, excluded_domains: frozenset[str] = frozenset()) -> int:
+        exclusion_clause = ""
+        parameters: tuple[object, ...] = ()
+        if excluded_domains:
+            placeholders = ",".join("?" for _ in excluded_domains)
+            exclusion_clause = f" AND domain NOT IN ({placeholders})"
+            parameters = tuple(sorted(excluded_domains))
         row = self.connection.execute(
             "SELECT COUNT(*) AS n FROM urls WHERE status='pending'"
+            f"{exclusion_clause}",
+            parameters,
         ).fetchone()
         return int(row["n"] or 0)
 

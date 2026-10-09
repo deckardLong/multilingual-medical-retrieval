@@ -64,18 +64,36 @@ def main() -> None:
             if not state.has_registered_urls():
                 print("No crawl state yet. Start with `python -m corpus_crawler run`.")
                 return
-            print(
-                f"Owner A: total={total:,}, completed={done:,}, remaining={pending:,}"
+            eligible_total, eligible_done, eligible_pending = state.totals(
+                settings.excluded_domains
             )
+            excluded_pending = pending - eligible_pending
+            print(
+                f"Owner A: total={total:,}, completed={done:,}, remaining={pending:,}; "
+                f"eligible={eligible_done:,}/{eligible_total:,}, "
+                f"eligible remaining={eligible_pending:,}, "
+                f"excluded pending={excluded_pending:,}"
+            )
+            if settings.excluded_domains:
+                print(f"Excluded domains: {', '.join(sorted(settings.excluded_domains))}")
             print(f"Status counts: {state.completed_counts()}")
             return
 
         added, scanned = state.prepare_source(settings, args.limit)
         total, done, pending = state.totals()
+        eligible_total, eligible_done, eligible_pending = state.totals(
+            settings.excluded_domains
+        )
+        excluded_pending = pending - eligible_pending
         print(
             f"Source rows scanned: {scanned:,}; new assigned URLs: {added:,}; "
-            f"registered={total:,}; already complete={done:,}; remaining={pending:,}"
+            f"registered={total:,}; already complete={done:,}; "
+            f"eligible={eligible_done:,}/{eligible_total:,}; "
+            f"eligible remaining={eligible_pending:,}; "
+            f"excluded pending={excluded_pending:,}"
         )
+        if settings.excluded_domains:
+            print(f"Excluded domains: {', '.join(sorted(settings.excluded_domains))}")
         writer = ShardWriter(settings, state)
         try:
             asyncio.run(run_crawl(settings, state, writer))

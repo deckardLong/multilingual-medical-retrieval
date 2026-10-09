@@ -32,9 +32,9 @@ async def run_crawl(
         async def worker() -> None:
             nonlocal last_report
             while not stop.is_set():
-                row = state.claim_next()
+                row = state.claim_next(settings.excluded_domains)
                 if row is None:
-                    if state.pending_count() == 0:
+                    if state.pending_count(settings.excluded_domains) == 0:
                         return
                     await asyncio.sleep(0.05)
                     continue
@@ -54,7 +54,7 @@ async def run_crawl(
                 writer.export_ready()
                 now = time.monotonic()
                 if now - last_report >= settings.progress_seconds:
-                    total, done, pending = state.totals()
+                    total, done, pending = state.totals(settings.excluded_domains)
                     elapsed = max(now - started, 0.001)
                     rate = sum(session_counts.values()) / elapsed
                     eta_seconds = pending / rate if rate else 0.0
@@ -80,9 +80,11 @@ async def run_crawl(
             raise
         finally:
             writer.export_ready(force=True)
-    total, done, pending = state.totals()
+    total, done, pending = state.totals(settings.excluded_domains)
+    excluded_pending = state.totals()[2] - pending
     print(
         f"\nFinished this run: {sum(session_counts.values()):,} URLs; "
-        f"overall {done:,}/{total:,}, remaining {pending:,}; "
+        f"eligible {done:,}/{total:,}, remaining {pending:,}; "
+        f"excluded pending {excluded_pending:,}; "
         f"statuses={dict(session_counts)}"
     )

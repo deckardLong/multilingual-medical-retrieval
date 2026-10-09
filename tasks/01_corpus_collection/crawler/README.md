@@ -7,40 +7,63 @@ khác và không được crawl nếu không có trong danh sách.
 
 ## Cài đặt
 
-Từ thư mục `tasks/01_corpus_collection/crawler`:
+Từ thư mục `tasks/01_corpus_collection/crawler`, tạo môi trường riêng cho
+crawler. Dùng đường dẫn Python đầy đủ bên dưới để không cài nhầm vào một
+virtualenv hoặc Conda environment khác đang được kích hoạt trong terminal:
 
 ```powershell
 py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e .
+.\.venv\Scripts\python.exe -m pip install -e .
 ```
+
+Không cần chạy PowerShell với quyền Administrator. Nếu `py -3.11` không tìm
+thấy Python 3.11, cài Python 3.11 hoặc thay bằng phiên bản Python từ 3.11 trở
+lên.
 
 Đầu vào mặc định là `corpus/raw/links_corpus.parquet` ở repository root, gồm
 `id` và `url`. Có thể đổi file bằng `--input`.
 
 ## Chạy
 
+Chạy các lệnh bên dưới từ cùng thư mục; chúng gọi trực tiếp Python trong
+`.venv` để bảo đảm dùng đúng môi trường đã cài crawler:
+
 ```powershell
 # Thống kê domain từ toàn bộ Parquet và ghi corpus/viz/input/domain_profile.parquet
-python -m corpus_crawler profile
+.\.venv\Scripts\python.exe -m corpus_crawler profile
 
 # Smoke test 100 URL đầu tiên của A (không thay thế pilot phân tầng theo domain)
-python -m corpus_crawler run --limit 100
+.\.venv\Scripts\python.exe -m corpus_crawler run --limit 100
 
-# Crawl toàn bộ 44 domain của A; chạy lại sau gián đoạn để tiếp tục
-python -m corpus_crawler run
+# Crawl các domain đang bật trong config; chạy lại để tiếp tục
+.\.venv\Scripts\python.exe -m corpus_crawler run
 
 # Xem trạng thái còn lại
-python -m corpus_crawler status
+.\.venv\Scripts\python.exe -m corpus_crawler status
 
 # Kiểm tra shard đã đóng
-python -m corpus_crawler validate ..\..\..\corpus\viz\docs\a\viz-a-00001.jsonl.zst
+.\.venv\Scripts\python.exe -m corpus_crawler validate ..\..\..\corpus\viz\docs\a\viz-a-00001.jsonl.zst
 ```
 
 `run` có thể chạy lại nhiều lần. URL đang dở được đưa về `pending`; kết quả
 hoàn tất được ghi vào SQLite trước khi lấy URL tiếp theo. `Ctrl+C` dừng mềm và
 đóng shard hiện tại. Nếu tiến trình bị kill/mất điện, các kết quả chưa xuất
 shard vẫn nằm trong state DB và được xuất khi chạy lại.
+Checkpoint chấp nhận Parquet được chuyển sang đường dẫn khác nếu kích thước và
+thời điểm sửa đổi của file không đổi; nếu một trong hai thay đổi, crawler dừng
+để tránh ghép dữ liệu từ input khác vào checkpoint cũ.
+
+`excluded_domains` trong `config.toml` tạm bỏ qua các domain chưa được phép
+crawl hoặc liên tục từ chối truy cập. URL chưa xử lý của các domain này vẫn ở
+trạng thái `pending`; tiến độ sẽ tiếp tục ở domain khác. Chỉ gỡ domain khỏi
+danh sách sau khi đã xác nhận quyền truy cập. Các URL trước đó đã hoàn tất với
+trạng thái `blocked` được giữ nguyên trong log và không tự động crawl lại.
+Mặc định hiện tại tạm bỏ qua `baohaiphong.vn`, `nhathuoclongchau.com.vn` và
+`youmed.vn` vì các lượt thử bị HTTP 403; `khoahocphothong.vn` vì `robots.txt`
+liên tục trả HTTP 301; và `laodong.vn`, `baotayninh.vn` vì lần lượt 298 và
+1.198 URL đã thử đều trả nội dung rỗng sau bước trích xuất. URL chưa xử lý
+của các domain này được giữ lại trong checkpoint và không bị gửi request cho
+đến khi domain được gỡ khỏi cấu hình.
 
 ## Giới hạn và tuân thủ website
 

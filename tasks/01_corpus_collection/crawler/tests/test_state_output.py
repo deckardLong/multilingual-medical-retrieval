@@ -1,4 +1,5 @@
 import hashlib
+import json
 from dataclasses import replace
 
 import pyarrow as pa
@@ -87,6 +88,11 @@ def test_resume_filter_dedupe_and_export_recovery(tmp_path) -> None:
         added, _ = state.prepare_source(settings, None)
         assert added == 3
         assert state.totals() == (3, 0, 3)
+        excluded = frozenset({"cnkang.com"})
+        assert state.totals(excluded) == (0, 0, 0)
+        assert state.pending_count(excluded) == 0
+        assert state.claim_next(excluded) is None
+        assert state.totals() == (3, 0, 3)
         assert state.prepare_source(settings, None) == (0, 0)
 
         shared_text = "Một bài viết y khoa để kiểm tra trùng nội dung."
@@ -146,5 +152,42 @@ def test_resume_filter_dedupe_and_export_recovery(tmp_path) -> None:
         assert validate_shard_file(recovered_shard, "a", recovered_manifest)[0] == 1
         assert state.pending_batches() == []
         assert state.totals() == (3, 3, 0)
+    finally:
+        state.close()
+
+
+def test_prepare_source_accepts_input_moved_without_changes(tmp_path) -> None:
+    source = tmp_path / "links.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "id": [1],
+                "url": ["https://cnkang.com/1"],
+            }
+        ),
+        source,
+    )
+    settings = replace(
+        load_settings(),
+        input_parquet=source,
+        corpus_root=tmp_path / "corpus",
+    )
+    state_path = settings.corpus_root / "viz" / "state-a.sqlite3"
+    state = CrawlState(state_path)
+    try:
+        assert state.prepare_source(settings, None) == (1, 1)
+
+        moved_source = tmp_path / "moved" / source.name
+        moved_source.parent.mkdir()
+        source.rename(moved_source)
+        moved_settings = replace(settings, input_parquet=moved_source)
+
+        assert state.prepare_source(moved_settings, None) == (0, 0)
+        fingerprint = state.connection.execute(
+            "SELECT value FROM metadata WHERE key='input_fingerprint'"
+        ).fetchone()["value"]
+        assert json.loads(fingerprint)["path"] == str(
+            moved_settings.input_parquet.resolve()
+        )
     finally:
         state.close()

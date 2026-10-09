@@ -52,6 +52,7 @@ class Settings:
     user_agent: str
     code_commit: str
     domains: frozenset[str]
+    excluded_domains: frozenset[str]
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
@@ -74,6 +75,16 @@ def load_settings(config_path: Path | None = None) -> Settings:
     )
     if not domains:
         raise ValueError(f"No domains found in {domain_file}")
+    excluded_domains = frozenset(
+        str(domain).strip().lower()
+        for domain in crawl.get("excluded_domains", [])
+    )
+    unknown_excluded_domains = excluded_domains.difference(domains)
+    if unknown_excluded_domains:
+        raise ValueError(
+            "Excluded domains must be in domains_a.txt: "
+            f"{sorted(unknown_excluded_domains)}"
+        )
 
     settings = Settings(
         owner=owner,
@@ -94,6 +105,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
         user_agent=str(crawl["user_agent"]),
         code_commit=_git_code_commit(),
         domains=domains,
+        excluded_domains=excluded_domains,
     )
     if (
         settings.global_concurrency < 1

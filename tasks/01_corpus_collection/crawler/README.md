@@ -35,6 +35,9 @@ Chạy các lệnh bên dưới từ cùng thư mục; chúng gọi trực tiế
 # Smoke test 100 URL đầu tiên của A (không thay thế pilot phân tầng theo domain)
 .\.venv\Scripts\python.exe -m corpus_crawler run --limit 100
 
+# Pilot tối đa 100 URL đang pending chỉ trên một hostname; domain khác giữ nguyên
+.\.venv\Scripts\python.exe -m corpus_crawler run --domain sggp.org.vn --max-fetches 100
+
 # Crawl các domain đang bật trong config; chạy lại để tiếp tục
 .\.venv\Scripts\python.exe -m corpus_crawler run
 
@@ -49,6 +52,11 @@ Chạy các lệnh bên dưới từ cùng thư mục; chúng gọi trực tiế
 hoàn tất được ghi vào SQLite trước khi lấy URL tiếp theo. `Ctrl+C` dừng mềm và
 đóng shard hiện tại. Nếu tiến trình bị kill/mất điện, các kết quả chưa xuất
 shard vẫn nằm trong state DB và được xuất khi chạy lại.
+`--domain` chỉ chọn hostname chính xác cho một lượt chạy; `--max-fetches` giới
+hạn số URL được nhận xử lý trong lượt đó, tính cả lỗi. Kết hợp hai cờ này để
+pilot một domain mà không thay đổi danh sách domain hoặc bỏ URL pending ở các
+domain khác. Các tài liệu pilot hợp lệ sẽ được xuất shard khi lượt chạy kết
+thúc, kể cả khi chưa đủ `shard_docs`.
 Checkpoint chấp nhận Parquet được chuyển sang đường dẫn khác nếu kích thước và
 thời điểm sửa đổi của file không đổi; nếu một trong hai thay đổi, crawler dừng
 để tránh ghép dữ liệu từ input khác vào checkpoint cũ.

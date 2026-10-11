@@ -185,9 +185,17 @@ class CrawlState:
         self,
         excluded_domains: frozenset[str] = frozenset(),
         in_flight_domains: frozenset[str] = frozenset(),
+        included_domains: frozenset[str] | None = None,
     ) -> sqlite3.Row | None:
         filters = ["u.status='pending'"]
         parameters: list[str] = []
+        if included_domains is not None:
+            if not included_domains:
+                filters.append("0")
+            else:
+                placeholders = ",".join("?" for _ in included_domains)
+                filters.append(f"u.domain IN ({placeholders})")
+                parameters.extend(sorted(included_domains))
         if excluded_domains:
             placeholders = ",".join("?" for _ in excluded_domains)
             filters.append(f"u.domain NOT IN ({placeholders})")
@@ -358,20 +366,30 @@ class CrawlState:
         return performance
 
     def totals(
-        self, excluded_domains: frozenset[str] = frozenset()
+        self,
+        excluded_domains: frozenset[str] = frozenset(),
+        included_domains: frozenset[str] | None = None,
     ) -> tuple[int, int, int]:
-        exclusion_clause = ""
-        parameters: tuple[object, ...] = ()
+        filters: list[str] = []
+        parameters: list[str] = []
+        if included_domains is not None:
+            if not included_domains:
+                filters.append("0")
+            else:
+                placeholders = ",".join("?" for _ in included_domains)
+                filters.append(f"domain IN ({placeholders})")
+                parameters.extend(sorted(included_domains))
         if excluded_domains:
             placeholders = ",".join("?" for _ in excluded_domains)
-            exclusion_clause = f" WHERE domain NOT IN ({placeholders})"
-            parameters = tuple(sorted(excluded_domains))
+            filters.append(f"domain NOT IN ({placeholders})")
+            parameters.extend(sorted(excluded_domains))
+        where_clause = f" WHERE {' AND '.join(filters)}" if filters else ""
         row = self.connection.execute(
             f"""
             SELECT COUNT(*) AS total,
                    SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS done,
                    SUM(CASE WHEN status!='done' THEN 1 ELSE 0 END) AS pending
-            FROM urls{exclusion_clause}
+            FROM urls{where_clause}
             """,
             parameters,
         ).fetchone()
@@ -381,16 +399,26 @@ class CrawlState:
         row = self.connection.execute("SELECT 1 FROM urls LIMIT 1").fetchone()
         return row is not None
 
-    def pending_count(self, excluded_domains: frozenset[str] = frozenset()) -> int:
-        exclusion_clause = ""
-        parameters: tuple[object, ...] = ()
+    def pending_count(
+        self,
+        excluded_domains: frozenset[str] = frozenset(),
+        included_domains: frozenset[str] | None = None,
+    ) -> int:
+        filters = ["status='pending'"]
+        parameters: list[str] = []
+        if included_domains is not None:
+            if not included_domains:
+                filters.append("0")
+            else:
+                placeholders = ",".join("?" for _ in included_domains)
+                filters.append(f"domain IN ({placeholders})")
+                parameters.extend(sorted(included_domains))
         if excluded_domains:
             placeholders = ",".join("?" for _ in excluded_domains)
-            exclusion_clause = f" AND domain NOT IN ({placeholders})"
-            parameters = tuple(sorted(excluded_domains))
+            filters.append(f"domain NOT IN ({placeholders})")
+            parameters.extend(sorted(excluded_domains))
         row = self.connection.execute(
-            "SELECT COUNT(*) AS n FROM urls WHERE status='pending'"
-            f"{exclusion_clause}",
+            f"SELECT COUNT(*) AS n FROM urls WHERE {' AND '.join(filters)}",
             parameters,
         ).fetchone()
         return int(row["n"] or 0)

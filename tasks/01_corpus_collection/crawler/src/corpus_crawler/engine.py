@@ -14,8 +14,15 @@ from .state import CrawlState
 
 
 async def run_crawl(
-    settings: Settings, state: CrawlState, writer: ShardWriter
+    settings: Settings,
+    state: CrawlState,
+    writer: ShardWriter,
+    *,
+    included_domains: frozenset[str] | None = None,
+    max_fetches: int | None = None,
 ) -> None:
+    if max_fetches is not None and max_fetches < 1:
+        raise ValueError("max_fetches must be a positive integer.")
     connector = aiohttp.TCPConnector(limit=settings.global_concurrency)
     timeout = aiohttp.ClientTimeout(total=settings.timeout_seconds)
     headers = {"User-Agent": settings.user_agent}
@@ -24,6 +31,7 @@ async def run_crawl(
     session_counts: Counter[str] = Counter()
     stop = asyncio.Event()
     in_flight_domains: set[str] = set()
+    reserved_fetches = 0
     fetcher: RespectfulFetcher
     async with aiohttp.ClientSession(
         connector=connector, timeout=timeout, headers=headers
@@ -31,16 +39,23 @@ async def run_crawl(
         fetcher = RespectfulFetcher(settings, session)
 
         async def worker() -> None:
-            nonlocal last_report
+            nonlocal last_report, reserved_fetches
             while not stop.is_set():
+                if max_fetches is not None and reserved_fetches >= max_fetches:
+                    return
                 row = state.claim_next(
-                    settings.excluded_domains, frozenset(in_flight_domains)
+                    settings.excluded_domains,
+                    frozenset(in_flight_domains),
+                    included_domains,
                 )
                 if row is None:
-                    if state.pending_count(settings.excluded_domains) == 0:
+                    if state.pending_count(
+                        settings.excluded_domains, included_domains
+                    ) == 0:
                         return
                     await asyncio.sleep(0.05)
                     continue
+                reserved_fetches += 1
                 domain = str(row["domain"])
                 in_flight_domains.add(domain)
                 try:
@@ -66,7 +81,9 @@ async def run_crawl(
                     writer.export_ready()
                     now = time.monotonic()
                     if now - last_report >= settings.progress_seconds:
-                        total, done, pending = state.totals(settings.excluded_domains)
+                        total, done, pending = state.totals(
+                            settings.excluded_domains, included_domains
+                        )
                         elapsed = max(now - started, 0.001)
                         rate = sum(session_counts.values()) / elapsed
                         eta_seconds = pending / rate if rate else 0.0
@@ -94,10 +111,23 @@ async def run_crawl(
             raise
         finally:
             writer.export_ready(force=True)
-    total, done, pending = state.totals(settings.excluded_domains)
+    total, done, pending = state.totals(
+        settings.excluded_domains, included_domains
+    )
     excluded_pending = state.totals()[2] - pending
+    scope = (
+        f" in domain(s) {', '.join(sorted(included_domains))}"
+        if included_domains is not None
+        else ""
+    )
+    limit_message = (
+        f" (limit {max_fetches:,} URL fetches)"
+        if max_fetches is not None
+        else ""
+    )
     print(
-        f"\nFinished this run: {sum(session_counts.values()):,} URLs; "
+        f"\nFinished this run{scope}{limit_message}: "
+        f"{sum(session_counts.values()):,} URLs; "
         f"eligible {done:,}/{total:,}, remaining {pending:,}; "
         f"excluded pending {excluded_pending:,}; "
         f"statuses={dict(session_counts)}"

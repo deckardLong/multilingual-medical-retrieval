@@ -26,6 +26,15 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         help="Only register the first N URLs assigned to member A (smoke test)",
     )
+    run.add_argument(
+        "--domain",
+        help="Only crawl pending URLs for this exact assigned hostname",
+    )
+    run.add_argument(
+        "--max-fetches",
+        type=int,
+        help="Stop this run after at most N URL fetches (including failures)",
+    )
     subparsers.add_parser("status", help="Show saved progress")
     validate = subparsers.add_parser("validate", help="Validate a completed docs shard")
     validate.add_argument("shard", type=Path)
@@ -114,10 +123,24 @@ def main() -> None:
             print(f"Status counts: {state.completed_counts()}")
             return
 
+        included_domains = None
+        if args.domain is not None:
+            domain = args.domain.strip().lower()
+            if domain not in settings.domains:
+                raise ValueError(f"Unknown assigned domain: {args.domain}")
+            if domain in settings.excluded_domains:
+                raise ValueError(
+                    f"Domain {domain} is excluded in config.toml; remove it from "
+                    "excluded_domains before crawling it."
+                )
+            included_domains = frozenset({domain})
+        if args.max_fetches is not None and args.max_fetches < 1:
+            raise ValueError("--max-fetches must be a positive integer.")
+
         added, scanned = state.prepare_source(settings, args.limit)
         total, done, pending = state.totals()
         eligible_total, eligible_done, eligible_pending = state.totals(
-            settings.excluded_domains
+            settings.excluded_domains, included_domains
         )
         excluded_pending = pending - eligible_pending
         print(
@@ -127,11 +150,23 @@ def main() -> None:
             f"eligible remaining={eligible_pending:,}; "
             f"excluded pending={excluded_pending:,}"
         )
+        if included_domains is not None:
+            print(f"Domain filter: {', '.join(sorted(included_domains))}")
+        if args.max_fetches is not None:
+            print(f"Maximum URL fetches this run: {args.max_fetches:,}")
         if settings.excluded_domains:
             print(f"Excluded domains: {', '.join(sorted(settings.excluded_domains))}")
         writer = ShardWriter(settings, state)
         try:
-            asyncio.run(run_crawl(settings, state, writer))
+            asyncio.run(
+                run_crawl(
+                    settings,
+                    state,
+                    writer,
+                    included_domains=included_domains,
+                    max_fetches=args.max_fetches,
+                )
+            )
         except KeyboardInterrupt:
             writer.export_ready(force=True)
             print("\nStopped by user; completed results are checkpointed.")

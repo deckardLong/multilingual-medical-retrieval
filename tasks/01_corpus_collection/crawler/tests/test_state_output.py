@@ -256,3 +256,31 @@ def test_claim_next_samples_domains_then_prioritizes_stable_speed(tmp_path) -> N
         assert next_row["domain"] == fast_domain
     finally:
         state.close()
+
+
+def test_claim_next_can_be_scoped_to_included_domains(tmp_path) -> None:
+    state = CrawlState(tmp_path / "state.sqlite3")
+    try:
+        with state.connection:
+            state.connection.executemany(
+                "INSERT INTO urls(id, url, domain) VALUES(?, ?, ?)",
+                [
+                    (1, "https://sggp.org.vn/1", "sggp.org.vn"),
+                    (2, "https://cnkang.com/1", "cnkang.com"),
+                ],
+            )
+
+        assert state.pending_count(
+            included_domains=frozenset({"sggp.org.vn"})
+        ) == 1
+        assert state.totals(included_domains=frozenset({"sggp.org.vn"})) == (
+            1,
+            0,
+            1,
+        )
+        row = state.claim_next(included_domains=frozenset({"sggp.org.vn"}))
+        assert row is not None
+        assert row["domain"] == "sggp.org.vn"
+        assert state.claim_next(included_domains=frozenset()) is None
+    finally:
+        state.close()

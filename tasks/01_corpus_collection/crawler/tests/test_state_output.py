@@ -191,3 +191,68 @@ def test_prepare_source_accepts_input_moved_without_changes(tmp_path) -> None:
         )
     finally:
         state.close()
+
+
+def test_claim_next_samples_domains_then_prioritizes_stable_speed(tmp_path) -> None:
+    state = CrawlState(tmp_path / "state.sqlite3")
+    slow_domain = "cnkang.com"
+    fast_domain = "ask.39.net"
+    unstable_domain = "unstable.example"
+    try:
+        with state.connection:
+            state.connection.executemany(
+                "INSERT INTO urls(id, url, domain) VALUES(?, ?, ?)",
+                [
+                    (1, "https://cnkang.com/1", slow_domain),
+                    (2, "https://cnkang.com/2", slow_domain),
+                    (3, "https://cnkang.com/3", slow_domain),
+                    (4, "https://cnkang.com/4", slow_domain),
+                    (5, "https://ask.39.net/1", fast_domain),
+                    (6, "https://ask.39.net/2", fast_domain),
+                    (7, "https://ask.39.net/3", fast_domain),
+                    (8, "https://ask.39.net/4", fast_domain),
+                    (9, "https://unstable.example/1", unstable_domain),
+                    (10, "https://unstable.example/2", unstable_domain),
+                    (11, "https://unstable.example/3", unstable_domain),
+                    (12, "https://unstable.example/4", unstable_domain),
+                ],
+            )
+
+        first = state.claim_next()
+        assert first is not None
+        assert first["domain"] == fast_domain
+        second = state.claim_next(in_flight_domains=frozenset({fast_domain}))
+        assert second is not None
+        assert second["domain"] == slow_domain
+
+        for source_id, elapsed in (
+            (1, 6.0),
+            (2, 6.0),
+            (3, 6.0),
+            (5, 1.0),
+            (6, 1.0),
+            (7, 1.0),
+            (9, 1.0),
+            (10, 6.0),
+            (11, 11.0),
+        ):
+            state.save_result(
+                source_id,
+                1,
+                {"status": "ok"},
+                None,
+                elapsed_seconds=elapsed,
+                fetch_succeeded=True,
+            )
+
+        state.close()
+        state = CrawlState(tmp_path / "state.sqlite3")
+        performance = state.domain_performance()
+        assert performance[0]["domain"] == fast_domain
+        assert performance[1]["domain"] == slow_domain
+        assert performance[1]["conservative_rate"] > performance[2]["conservative_rate"]
+        next_row = state.claim_next()
+        assert next_row is not None
+        assert next_row["domain"] == fast_domain
+    finally:
+        state.close()

@@ -23,6 +23,7 @@ async def run_crawl(
     last_report = started
     session_counts: Counter[str] = Counter()
     stop = asyncio.Event()
+    in_flight_domains: set[str] = set()
     fetcher: RespectfulFetcher
     async with aiohttp.ClientSession(
         connector=connector, timeout=timeout, headers=headers
@@ -32,39 +33,52 @@ async def run_crawl(
         async def worker() -> None:
             nonlocal last_report
             while not stop.is_set():
-                row = state.claim_next(settings.excluded_domains)
+                row = state.claim_next(
+                    settings.excluded_domains, frozenset(in_flight_domains)
+                )
                 if row is None:
                     if state.pending_count(settings.excluded_domains) == 0:
                         return
                     await asyncio.sleep(0.05)
                     continue
-                result = await fetcher.fetch(str(row["url"]), str(row["domain"]))
-                log_record, doc_record = await asyncio.to_thread(
-                    make_records,
-                    int(row["id"]),
-                    str(row["url"]),
-                    str(row["domain"]),
-                    result,
-                    settings,
-                )
-                state.save_result(
-                    int(row["id"]), result.attempts, log_record, doc_record
-                )
-                session_counts[log_record["status"]] += 1
-                writer.export_ready()
-                now = time.monotonic()
-                if now - last_report >= settings.progress_seconds:
-                    total, done, pending = state.totals(settings.excluded_domains)
-                    elapsed = max(now - started, 0.001)
-                    rate = sum(session_counts.values()) / elapsed
-                    eta_seconds = pending / rate if rate else 0.0
-                    print(
-                        f"\rProgress {done:,}/{total:,} | remaining {pending:,} | "
-                        f"{rate:.2f} URL/s | ETA {eta_seconds / 3600:.1f} h",
-                        end="",
-                        flush=True,
+                domain = str(row["domain"])
+                in_flight_domains.add(domain)
+                try:
+                    request_started = time.monotonic()
+                    result = await fetcher.fetch(str(row["url"]), domain)
+                    log_record, doc_record = await asyncio.to_thread(
+                        make_records,
+                        int(row["id"]),
+                        str(row["url"]),
+                        domain,
+                        result,
+                        settings,
                     )
-                    last_report = now
+                    state.save_result(
+                        int(row["id"]),
+                        result.attempts,
+                        log_record,
+                        doc_record,
+                        elapsed_seconds=time.monotonic() - request_started,
+                        fetch_succeeded=result.status == "ok",
+                    )
+                    session_counts[log_record["status"]] += 1
+                    writer.export_ready()
+                    now = time.monotonic()
+                    if now - last_report >= settings.progress_seconds:
+                        total, done, pending = state.totals(settings.excluded_domains)
+                        elapsed = max(now - started, 0.001)
+                        rate = sum(session_counts.values()) / elapsed
+                        eta_seconds = pending / rate if rate else 0.0
+                        print(
+                            f"\rProgress {done:,}/{total:,} | remaining {pending:,} | "
+                            f"{rate:.2f} URL/s | ETA {eta_seconds / 3600:.1f} h",
+                            end="",
+                            flush=True,
+                        )
+                        last_report = now
+                finally:
+                    in_flight_domains.discard(domain)
 
         workers = [
             asyncio.create_task(worker())

@@ -10,6 +10,7 @@ excluded_domains = [
   "laodong.vn",
   "nhathuoclongchau.com.vn",
   "youmed.vn",
+  "vov.vn",
 ]
 global_concurrency = 32
 per_domain_concurrency = 1

@@ -1,14 +1,27 @@
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from .settings import Settings
 from .source import iter_source_rows, source_row_count
 from .text import normalize_hostname
+
+
+DOMAIN_WARMUP_SAMPLES = 3
+
+
+class DomainPerformance(TypedDict):
+    domain: str
+    sample_count: int
+    success_rate: float
+    mean_seconds: float
+    standard_deviation: float
+    conservative_rate: float
 
 
 class CrawlState:
@@ -42,6 +55,13 @@ class CrawlState:
             CREATE TABLE IF NOT EXISTS metadata (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS domain_stats (
+                domain TEXT PRIMARY KEY,
+                sample_count INTEGER NOT NULL DEFAULT 0,
+                successful_count INTEGER NOT NULL DEFAULT 0,
+                mean_seconds REAL NOT NULL DEFAULT 0,
+                m2_seconds REAL NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS export_batches (
                 batch_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,18 +182,40 @@ class CrawlState:
         return cursor.rowcount
 
     def claim_next(
-        self, excluded_domains: frozenset[str] = frozenset()
+        self,
+        excluded_domains: frozenset[str] = frozenset(),
+        in_flight_domains: frozenset[str] = frozenset(),
     ) -> sqlite3.Row | None:
-        exclusion_clause = ""
-        parameters: tuple[object, ...] = ()
+        filters = ["u.status='pending'"]
+        parameters: list[str] = []
         if excluded_domains:
             placeholders = ",".join("?" for _ in excluded_domains)
-            exclusion_clause = f" AND domain NOT IN ({placeholders})"
-            parameters = tuple(sorted(excluded_domains))
-        row = self.connection.execute(
-            "SELECT id, url, domain FROM urls WHERE status='pending'"
-            f"{exclusion_clause} ORDER BY id LIMIT 1",
+            filters.append(f"u.domain NOT IN ({placeholders})")
+            parameters.extend(sorted(excluded_domains))
+        if in_flight_domains:
+            placeholders = ",".join("?" for _ in in_flight_domains)
+            filters.append(f"u.domain NOT IN ({placeholders})")
+            parameters.extend(sorted(in_flight_domains))
+        candidates = self.connection.execute(
+            f"""
+            SELECT u.domain, MIN(u.id) AS next_id,
+                   COALESCE(ds.sample_count, 0) AS sample_count,
+                   COALESCE(ds.successful_count, 0) AS successful_count,
+                   COALESCE(ds.mean_seconds, 0) AS mean_seconds,
+                   COALESCE(ds.m2_seconds, 0) AS m2_seconds
+            FROM urls AS u
+            LEFT JOIN domain_stats AS ds ON ds.domain=u.domain
+            WHERE {" AND ".join(filters)}
+            GROUP BY u.domain
+            """,
             parameters,
+        ).fetchall()
+        if not candidates:
+            return None
+        candidate = min(candidates, key=self._domain_priority)
+        row = self.connection.execute(
+            "SELECT id, url, domain FROM urls WHERE id=? AND status='pending'",
+            (candidate["next_id"],),
         ).fetchone()
         if row is None:
             return None
@@ -184,13 +226,34 @@ class CrawlState:
         self.connection.commit()
         return row if cursor.rowcount == 1 else None
 
+    @staticmethod
+    def _domain_priority(stats: sqlite3.Row) -> tuple[int, int, float, str]:
+        sample_count = int(stats["sample_count"])
+        domain = str(stats["domain"])
+        if sample_count < DOMAIN_WARMUP_SAMPLES:
+            return (0, sample_count, 0.0, domain)
+
+        variance = float(stats["m2_seconds"]) / max(sample_count - 1, 1)
+        standard_deviation = math.sqrt(max(variance, 0.0))
+        mean_seconds = max(float(stats["mean_seconds"]), 0.001)
+        success_rate = int(stats["successful_count"]) / sample_count
+        conservative_rate = success_rate / (mean_seconds + standard_deviation)
+        return (1, 0, -conservative_rate, domain)
+
     def save_result(
         self,
         source_id: int,
         attempts: int,
         log_record: dict[str, Any],
         doc_record: dict[str, Any] | None,
+        *,
+        elapsed_seconds: float | None = None,
+        fetch_succeeded: bool = False,
     ) -> None:
+        if elapsed_seconds is not None and (
+            not math.isfinite(elapsed_seconds) or elapsed_seconds < 0
+        ):
+            raise ValueError("elapsed_seconds must be a finite, non-negative number.")
         with self.connection:
             if doc_record is not None:
                 content_hash = doc_record["content_hash"]
@@ -225,6 +288,74 @@ class CrawlState:
                     source_id,
                 ),
             )
+            if elapsed_seconds is not None:
+                url_row = self.connection.execute(
+                    "SELECT domain FROM urls WHERE id=?", (source_id,)
+                ).fetchone()
+                if url_row is None:
+                    raise ValueError(f"Unknown source URL ID: {source_id}")
+                domain = str(url_row["domain"])
+                stats = self.connection.execute(
+                    "SELECT sample_count, successful_count, mean_seconds, m2_seconds "
+                    "FROM domain_stats WHERE domain=?",
+                    (domain,),
+                ).fetchone()
+                sample_count = int(stats["sample_count"]) if stats else 0
+                successful_count = int(stats["successful_count"]) if stats else 0
+                mean_seconds = float(stats["mean_seconds"]) if stats else 0.0
+                m2_seconds = float(stats["m2_seconds"]) if stats else 0.0
+                sample_count += 1
+                elapsed_seconds = max(elapsed_seconds, 0.001)
+                delta = elapsed_seconds - mean_seconds
+                mean_seconds += delta / sample_count
+                m2_seconds += delta * (elapsed_seconds - mean_seconds)
+                successful_count += int(fetch_succeeded)
+                self.connection.execute(
+                    """
+                    INSERT OR REPLACE INTO domain_stats(
+                        domain, sample_count, successful_count, mean_seconds, m2_seconds
+                    ) VALUES(?, ?, ?, ?, ?)
+                    """,
+                    (
+                        domain,
+                        sample_count,
+                        successful_count,
+                        mean_seconds,
+                        m2_seconds,
+                    ),
+                )
+
+    def domain_performance(self) -> list[DomainPerformance]:
+        rows = self.connection.execute(
+            """
+            SELECT domain, sample_count, successful_count, mean_seconds, m2_seconds
+            FROM domain_stats
+            WHERE EXISTS (
+                SELECT 1 FROM urls
+                WHERE urls.domain=domain_stats.domain AND urls.status='pending'
+            )
+            """
+        ).fetchall()
+        ranked = sorted(rows, key=self._domain_priority)
+        performance: list[DomainPerformance] = []
+        for row in ranked:
+            sample_count = int(row["sample_count"])
+            variance = float(row["m2_seconds"]) / max(sample_count - 1, 1)
+            standard_deviation = math.sqrt(max(variance, 0.0))
+            mean_seconds = float(row["mean_seconds"])
+            success_rate = int(row["successful_count"]) / sample_count
+            performance.append(
+                {
+                    "domain": str(row["domain"]),
+                    "sample_count": sample_count,
+                    "success_rate": success_rate,
+                    "mean_seconds": mean_seconds,
+                    "standard_deviation": standard_deviation,
+                    "conservative_rate": success_rate
+                    / max(mean_seconds + standard_deviation, 0.001),
+                }
+            )
+        return performance
 
     def totals(
         self, excluded_domains: frozenset[str] = frozenset()

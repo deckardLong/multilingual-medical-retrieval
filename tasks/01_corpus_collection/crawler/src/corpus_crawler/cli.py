@@ -10,6 +10,7 @@ from .output import ShardWriter
 from .settings import load_settings
 from .state import CrawlState
 from .source import profile_domains
+from .state import DOMAIN_WARMUP_SAMPLES
 from .validation import validate_shard_file
 
 
@@ -74,6 +75,40 @@ def main() -> None:
                 f"eligible remaining={eligible_pending:,}, "
                 f"excluded pending={excluded_pending:,}"
             )
+            performance = [
+                row
+                for row in state.domain_performance()
+                if row["domain"] not in settings.excluded_domains
+            ]
+            ranked_domains = [
+                row
+                for row in performance
+                if row["sample_count"] >= DOMAIN_WARMUP_SAMPLES
+            ]
+            calibrating_domains = [
+                row
+                for row in performance
+                if row["sample_count"] < DOMAIN_WARMUP_SAMPLES
+            ]
+            if ranked_domains:
+                print("Stable-domain priority (estimated successful URLs/s):")
+                for row in ranked_domains[:10]:
+                    print(
+                        f"  {row['domain']}: {row['conservative_rate']:.3f} URL/s "
+                        f"(n={row['sample_count']}, "
+                        f"success={row['success_rate']:.0%}, "
+                        f"mean={row['mean_seconds']:.2f}s, "
+                        f"sd={row['standard_deviation']:.2f}s)"
+                    )
+            if calibrating_domains:
+                domains = ", ".join(
+                    f"{row['domain']} ({row['sample_count']}/{DOMAIN_WARMUP_SAMPLES})"
+                    for row in calibrating_domains[:10]
+                )
+                remainder = len(calibrating_domains) - 10
+                if remainder > 0:
+                    domains += f", and {remainder} more"
+                print(f"Calibrating domains: {domains}")
             if settings.excluded_domains:
                 print(f"Excluded domains: {', '.join(sorted(settings.excluded_domains))}")
             print(f"Status counts: {state.completed_counts()}")

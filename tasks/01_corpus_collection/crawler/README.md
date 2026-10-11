@@ -69,6 +69,12 @@ của các domain này được giữ lại trong checkpoint và không bị g�
 
 - Mặc định tối đa 32 request đồng thời toàn cục, nhưng chỉ 1 request đồng thời
   mỗi hostname và tối thiểu 1 giây giữa các request cùng hostname.
+- Scheduler không để nhiều worker cùng chờ trên một hostname. Nó lấy 3 mẫu
+  đầu cho mỗi domain còn URL trước khi xếp hạng; sau đó ưu tiên domain có tốc
+  độ fetch thành công cao và thời gian xử lý ít dao động. Thống kê được lưu
+  trong checkpoint, áp dụng khi resume và xem được bằng lệnh `status`. Việc
+  ưu tiên chỉ thay đổi thứ tự URL, không bỏ qua domain hoặc nới lỏng giới hạn
+  crawl.
 - Đọc `robots.txt`, áp dụng `Disallow` và `Crawl-delay`; lỗi robots/network bị
   xử lý fail-closed. Không có cơ chế vượt captcha, paywall hay chặn truy cập.
 - Timeout, lỗi HTTP và giới hạn kích thước response được cấu hình trong

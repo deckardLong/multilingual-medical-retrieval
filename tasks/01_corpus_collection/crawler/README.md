@@ -1,5 +1,31 @@
 # Crawler cho thành viên A (VI/ZH)
 
+Notebook Kaggle độc lập: [kaggle_crawl.ipynb](../kaggle_crawl.ipynb). Notebook
+này dò `links_corpus.parquet` trong `/kaggle/input`, chỉ crawl 44 hostname
+Member A, và kiểm tra `query.parquet` nếu có; chỉ file links được dùng để chọn
+URL crawl. Nó hiển thị tiến độ và trạng thái theo domain, đồng thời lưu mỗi
+kết quả vào SQLite trong `/kaggle/working/member_a_crawl`.
+
+Để tiếp tục vào phiên Kaggle khác, đợi cell dừng xong để tạo
+`/kaggle/working/member_a_resume.zip`, chọn **Save Version** để lưu Output,
+rồi thêm Output đó làm Input cho notebook mới. Notebook tự khôi phục bundle.
+Kaggle không giữ `/kaggle/working` giữa các phiên; nếu phiên bị kill đột ngột,
+hãy lưu/đính kèm Output gần nhất trước khi đóng. Khi khởi tạo lần đầu,
+checkpoint SQLite cũ `state-a.sqlite3` chỉ được dùng để nhập các kết quả có
+cặp ID + URL khớp với snapshot hiện tại; checkpoint cũ không bị sửa.
+
+Khi chưa có bundle/checkpoint, notebook tự đọc các shard `.jsonl.zst` công khai
+tại [Hugging Face `corpus/viz/docs/a`](https://huggingface.co/datasets/ai-guru-medical-retrieval/multilingual-medical-retrieval-corpus/tree/main/corpus/viz/docs/a)
+và đối chiếu `doc_id` cùng `url` với `links_corpus.parquet`. Các document khớp
+được tính là đã crawl và không bị crawl/xuất lặp lại. Thư mục `crawl_log/a`
+không có trên Hugging Face hiện tại, nên chỉ có thể resume các URL có document
+đã xuất bản; các URL trước đây bị block, rỗng hoặc quá ngắn không có document
+vẫn sẽ được xử lý lại.
+
+Crawler CLI bên dưới vẫn chạy trên máy local và dùng checkpoint riêng trong
+`corpus/viz/state-a.sqlite3`. Không chạy đồng thời notebook và CLI trên cùng
+hostname.
+
 Crawler này chỉ lấy URL có hostname khớp chính xác với danh sách trong
 `domains_a.txt` (44 hostname của `member_01.md`). `www.` và dấu chấm cuối
 hostname được chuẩn hóa như `corpus_sources.md`; subdomain khác vẫn là domain
@@ -64,8 +90,9 @@ thời điểm sửa đổi của file không đổi; nếu một trong hai thay
 `excluded_domains` trong `config.toml` tạm bỏ qua các domain chưa được phép
 crawl hoặc liên tục từ chối truy cập. URL chưa xử lý của các domain này vẫn ở
 trạng thái `pending`; tiến độ sẽ tiếp tục ở domain khác. Chỉ gỡ domain khỏi
-danh sách sau khi đã xác nhận quyền truy cập. Các URL trước đó đã hoàn tất với
-trạng thái `blocked` được giữ nguyên trong log và không tự động crawl lại.
+danh sách sau khi đã xác nhận quyền truy cập. Các URL đã hoàn tất với trạng
+thái `blocked` không tự động crawl lại; chỉ thử lại sau khi đã xác nhận quyền
+truy cập và chủ động đặt lại trạng thái trong checkpoint.
 Mặc định hiện tại tạm bỏ qua `baohaiphong.vn`, `nhathuoclongchau.com.vn` và
 `youmed.vn` vì các lượt thử bị HTTP 403; `khoahocphothong.vn` vì `robots.txt`
 liên tục trả HTTP 301; và `laodong.vn`, `baotayninh.vn` vì lần lượt 298 và

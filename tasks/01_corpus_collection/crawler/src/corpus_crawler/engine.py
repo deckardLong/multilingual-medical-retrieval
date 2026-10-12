@@ -87,9 +87,37 @@ async def run_crawl(
                         elapsed = max(now - started, 0.001)
                         rate = sum(session_counts.values()) / elapsed
                         eta_seconds = pending / rate if rate else 0.0
+                        status_counts = state.completed_counts(
+                            settings.excluded_domains, included_domains
+                        )
+                        status_labels = {
+                            "blocked": "bị chặn",
+                            "too_short": "quá ngắn",
+                            "ok": "đạt",
+                            "empty": "rỗng",
+                            "http_error": "lỗi HTTP",
+                            "timeout": "quá giờ",
+                            "lang_mismatch": "sai ngôn ngữ",
+                            "duplicate": "trùng lặp",
+                        }
+                        status_summary = " | ".join(
+                            f"{status_labels[status]} ({status}) "
+                            f"{status_counts.get(status, 0):,}"
+                            for status in (
+                                "blocked",
+                                "too_short",
+                                "ok",
+                                "empty",
+                                "http_error",
+                                "timeout",
+                                "lang_mismatch",
+                                "duplicate",
+                            )
+                        )
                         print(
-                            f"\rProgress {done:,}/{total:,} | remaining {pending:,} | "
-                            f"{rate:.2f} URL/s | ETA {eta_seconds / 3600:.1f} h",
+                            f"\rTiến độ A: {done:,}/{total:,} | còn lại {pending:,} | "
+                            f"{status_summary} | {rate:.2f} URL/s | "
+                            f"còn khoảng {eta_seconds / 3600:.1f} giờ",
                             end="",
                             flush=True,
                         )
@@ -126,9 +154,9 @@ async def run_crawl(
         else ""
     )
     print(
-        f"\nFinished this run{scope}{limit_message}: "
-        f"{sum(session_counts.values()):,} URLs; "
-        f"eligible {done:,}/{total:,}, remaining {pending:,}; "
-        f"excluded pending {excluded_pending:,}; "
-        f"statuses={dict(session_counts)}"
+        f"\nHoàn tất lượt crawl{scope}{limit_message}: "
+        f"{sum(session_counts.values()):,} URL; "
+        f"đủ điều kiện {done:,}/{total:,}, còn lại {pending:,}; "
+        f"đang loại trừ {excluded_pending:,} URL chưa crawl; "
+        f"trạng thái={dict(session_counts)}"
     )

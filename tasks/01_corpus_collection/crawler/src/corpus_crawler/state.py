@@ -423,11 +423,29 @@ class CrawlState:
         ).fetchone()
         return int(row["n"] or 0)
 
-    def completed_counts(self) -> dict[str, int]:
+    def completed_counts(
+        self,
+        excluded_domains: frozenset[str] = frozenset(),
+        included_domains: frozenset[str] | None = None,
+    ) -> dict[str, int]:
+        filters = ["status='done'"]
+        parameters: list[str] = []
+        if included_domains is not None:
+            if not included_domains:
+                filters.append("0")
+            else:
+                placeholders = ",".join("?" for _ in included_domains)
+                filters.append(f"domain IN ({placeholders})")
+                parameters.extend(sorted(included_domains))
+        if excluded_domains:
+            placeholders = ",".join("?" for _ in excluded_domains)
+            filters.append(f"domain NOT IN ({placeholders})")
+            parameters.extend(sorted(excluded_domains))
         rows = self.connection.execute(
             "SELECT json_extract(log_json, '$.status') AS result_status, COUNT(*) AS n "
-            "FROM urls WHERE status='done' "
-            "GROUP BY json_extract(log_json, '$.status')"
+            f"FROM urls WHERE {' AND '.join(filters)} "
+            "GROUP BY json_extract(log_json, '$.status')",
+            parameters,
         ).fetchall()
         return {str(row["result_status"]): int(row["n"]) for row in rows}
 

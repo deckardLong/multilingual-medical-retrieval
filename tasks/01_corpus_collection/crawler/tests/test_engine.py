@@ -86,5 +86,16 @@ def test_run_crawl_limits_fetches_to_selected_domain(
             0,
             2,
         )
+        assert state.completed_counts() == {"blocked": 3}
+        assert (
+            state.completed_counts(included_domains=frozenset({other_domain})) == {}
+        )
+        assert (
+            state.completed_counts(
+                excluded_domains=frozenset({selected_domain}),
+                included_domains=frozenset({selected_domain}),
+            )
+            == {}
+        )
     finally:
         state.close()

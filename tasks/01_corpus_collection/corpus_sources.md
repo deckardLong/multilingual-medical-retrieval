@@ -2,144 +2,124 @@
 
 ## 1. Nguồn dữ liệu
 
-* **Parquet đầu vào:** `corpus/raw/links_corpus.parquet`
-* **Cột URL:** `url`
-* **Script thống kê:** `corpus_demo.py`
-* **Phạm vi phân tích:** 4.394.718 URL trong snapshot corpus.
+* **Parquet URL:** `corpus/raw/links_corpus.parquet` (cột `id`, `url`).
+* **Parquet query:** `queries/query.parquet` (cột `id`, `query`); không dùng làm đầu vào crawler.
+* **Snapshot được kiểm tra:** 2026-10-12. Thống kê dưới đây được tính lại từ các file hiện có.
 
 ## 2. Phương pháp thống kê
 
-Domain của mỗi URL được xác định dựa trên **hostname** của URL.
-
-Quy trình chuẩn hóa hostname:
-
-1. Trích xuất hostname từ URL.
-2. Chuyển hostname về chữ thường.
-3. Loại bỏ dấu chấm ở cuối hostname nếu có.
-4. Loại bỏ tiền tố `www.` nếu có.
-5. Giữ nguyên subdomain, do đó các hostname như `ask.39.net` và `39.net` được xem là **hai domain riêng biệt**.
-6. Các URL không có hostname hợp lệ được thống kê riêng.
-
-> **Lưu ý:** Số lượng của mỗi domain biểu thị **số URL xuất hiện trong snapshot**, không đồng nghĩa với số trang đã crawl thành công hoặc số tài liệu hợp lệ sau quá trình ingestion.
+Domain của mỗi URL được xác định bằng hostname: chuyển chữ thường, bỏ dấu chấm cuối và tiền tố `www.`, nhưng giữ nguyên subdomain. Hostname không hợp lệ được thống kê riêng. Số lượng là số hàng URL trong snapshot, không phải số trang crawl thành công hay số tài liệu cuối cùng.
 
 ## 3. Kết quả tổng quan
 
-| Chỉ số                     |       Giá trị |
-| -------------------------- | ------------: |
-| Tổng số URL                | **4.394.718** |
-| Tổng số domain             |        **97** |
-| URL không có domain hợp lệ |         **0** |
+| Chỉ số | Giá trị |
+| --- | ---: |
+| Tổng số URL | **1.194.469** |
+| Hostname chuẩn hóa | **93** |
+| URL không có hostname hợp lệ | **0** |
+| URL được phân công cho Member A (44 hostname) | **366.854** |
+| Query trong `query.parquet` | **1.200** |
 
-Như vậy, toàn bộ **4.394.718 URL** trong snapshot đều có hostname hợp lệ và được phân loại vào **97 domain** khác nhau.
+## 4. Phân bố số URL theo hostname
 
-## 4. Phân bố số URL theo domain
+| # | Hostname | Số URL |
+| -: | --- | ---: |
+| 1 | `pubmed.ncbi.nlm.nih.gov` | 240.000 |
+| 2 | `suckhoecongdongonline.vn` | 154.503 |
+| 3 | `120ask.com` | 98.160 |
+| 4 | `suckhoedoisong.vn` | 85.823 |
+| 5 | `nhathuoclongchau.com.vn` | 79.598 |
+| 6 | `thanhnien.vn` | 72.111 |
+| 7 | `cnkang.com` | 40.046 |
+| 8 | `ask.39.net` | 32.772 |
+| 9 | `laodong.vn` | 31.282 |
+| 10 | `phunusuckhoe.giadinhonline.vn` | 27.577 |
+| 11 | `familydoctor.com.cn` | 26.819 |
+| 12 | `medlatec.vn` | 24.762 |
+| 13 | `giadinhonline.vn` | 16.729 |
+| 14 | `baohaiphong.vn` | 16.286 |
+| 15 | `baonghean.vn` | 15.941 |
+| 16 | `vietnamnet.vn` | 15.543 |
+| 17 | `baodanang.vn` | 14.500 |
+| 18 | `tiemchunglongchau.com.vn` | 13.281 |
+| 19 | `baocantho.com.vn` | 12.016 |
+| 20 | `hellobacsi.com` | 11.747 |
+| 21 | `baoangiang.com.vn` | 10.738 |
+| 22 | `vov.vn` | 9.784 |
+| 23 | `khoahocphothong.vn` | 8.143 |
+| 24 | `youmed.vn` | 7.189 |
+| 25 | `vov2.vov.vn` | 6.899 |
+| 26 | `zysjonline.com` | 6.591 |
+| 27 | `phuyen.baodaklak.vn` | 6.252 |
+| 28 | `zhongyibaodian.net` | 6.061 |
+| 29 | `suckhoeviet.org.vn` | 5.627 |
+| 30 | `baoquangtri.vn` | 5.483 |
+| 31 | `pmc-ecm-healthblog.beta.pharmacity.io` | 5.333 |
+| 32 | `nhandan.vn` | 5.225 |
+| 33 | `baovinhlong.com.vn` | 5.113 |
+| 34 | `a-hospital.com` | 4.701 |
+| 35 | `tamanhhospital.vn` | 4.261 |
+| 36 | `youlai.cn` | 4.139 |
+| 37 | `tuoitre.vn` | 3.893 |
+| 38 | `qdnd.vn` | 3.700 |
+| 39 | `vietnamplus.vn` | 3.695 |
+| 40 | `baby.39.net` | 3.368 |
+| 41 | `baogialai.com.vn` | 3.290 |
+| 42 | `tienphong.vn` | 3.021 |
+| 43 | `test.pmphai.com` | 2.989 |
+| 44 | `thaythuocvietnam.vn` | 2.927 |
+| 45 | `baoquangninh.vn` | 2.912 |
+| 46 | `bachmai.gov.vn` | 2.783 |
+| 47 | `baochinhphu.vn` | 2.302 |
+| 48 | `dantri.com.vn` | 2.063 |
+| 49 | `vnexpress.net` | 2.055 |
+| 50 | `jbk.39.net` | 2.033 |
+| 51 | `baolangson.vn` | 1.981 |
+| 52 | `sggp.org.vn` | 1.853 |
+| 53 | `baophutho.vn` | 1.288 |
+| 54 | `hanoimoi.vn` | 1.283 |
+| 55 | `care.39.net` | 1.282 |
+| 56 | `benhviennhitrunguong.gov.vn` | 1.200 |
+| 57 | `baotayninh.vn` | 1.198 |
+| 58 | `heart.39.net` | 1.055 |
+| 59 | `fk.39.net` | 928 |
+| 60 | `msdmanuals.cn` | 905 |
+| 61 | `baothanhhoa.vn` | 782 |
+| 62 | `nk.39.net` | 762 |
+| 63 | `cancer.39.net` | 736 |
+| 64 | `article.iiyi.com` | 729 |
+| 65 | `tnb.39.net` | 717 |
+| 66 | `wujue.com` | 708 |
+| 67 | `woman.39.net` | 687 |
+| 68 | `food.39.net` | 594 |
+| 69 | `jb39.com` | 527 |
+| 70 | `ek.39.net` | 448 |
+| 71 | `benhvienvietduc.org` | 425 |
+| 72 | `man.39.net` | 382 |
+| 73 | `shen.39.net` | 325 |
+| 74 | `gan.39.net` | 294 |
+| 75 | `wei.39.net` | 225 |
+| 76 | `zydcd.com` | 204 |
+| 77 | `sj.39.net` | 197 |
+| 78 | `fitness.39.net` | 185 |
+| 79 | `gk.39.net` | 90 |
+| 80 | `pf.39.net` | 85 |
+| 81 | `pharmacity.vn` | 69 |
+| 82 | `baidianfeng.familydoctor.com.cn` | 60 |
+| 83 | `gc.39.net` | 59 |
+| 84 | `health.people.com.cn` | 50 |
+| 85 | `byby.39.net` | 37 |
+| 86 | `qihuangzhishu.com` | 29 |
+| 87 | `baidu.com` | 11 |
+| 88 | `bingli.iiyi.com` | 5 |
+| 89 | `mega.vietnamplus.vn` | 2 |
+| 90 | `qy.familydoctor.com.cn` | 2 |
+| 91 | `familydoctor.cn` | 2 |
+| 92 | `special.vietnamplus.vn` | 1 |
+| 93 | `ask.familydoctor.com.cn` | 1 |
 
-Danh sách dưới đây được sắp xếp theo **số lượng URL giảm dần**:
+## 5. Ghi chú
 
-|  # | Domain                                  |  Số URL |
-| -: | --------------------------------------- | ------: |
-|  1 | `cnkang.com`                            | 963.438 |
-|  2 | `120ask.com`                            | 918.479 |
-|  3 | `familydoctor.com.cn`                   | 447.453 |
-|  4 | `ask.39.net`                            | 337.375 |
-|  5 | `zysjonline.com`                        | 243.347 |
-|  6 | `a-hospital.com`                        | 169.339 |
-|  7 | `suckhoecongdongonline.vn`              | 154.503 |
-|  8 | `zhongyibaodian.net`                    | 146.700 |
-|  9 | `suckhoedoisong.vn`                     |  85.823 |
-| 10 | `nhathuoclongchau.com.vn`               |  79.598 |
-| 11 | `zydcd.com`                             |  78.680 |
-| 12 | `thanhnien.vn`                          |  72.111 |
-| 13 | `wujue.com`                             |  53.341 |
-| 14 | `youlai.cn`                             |  46.119 |
-| 15 | `laodong.vn`                            |  31.282 |
-| 16 | `baby.39.net`                           |  27.621 |
-| 17 | `phunusuckhoe.giadinhonline.vn`         |  27.577 |
-| 18 | `vinmec.com`                            |  26.129 |
-| 19 | `bingli.iiyi.com`                       |  24.990 |
-| 20 | `medlatec.vn`                           |  24.762 |
-| 21 | `qihuangzhishu.com`                     |  23.637 |
-| 22 | `jbk.39.net`                            |  19.142 |
-| 23 | `giadinhonline.vn`                      |  16.729 |
-| 24 | `baohaiphong.vn`                        |  16.286 |
-| 25 | `baonghean.vn`                          |  15.941 |
-| 26 | `vietnamnet.vn`                         |  15.543 |
-| 27 | `care.39.net`                           |  15.134 |
-| 28 | `test.pmphai.com`                       |  15.120 |
-| 29 | `baodanang.vn`                          |  14.500 |
-| 30 | `tiemchunglongchau.com.vn`              |  13.281 |
-| 31 | `fitness.39.net`                        |  12.066 |
-| 32 | `baocantho.com.vn`                      |  12.016 |
-| 33 | `hellobacsi.com`                        |  11.747 |
-| 34 | `woman.39.net`                          |  11.687 |
-| 35 | `food.39.net`                           |  11.024 |
-| 36 | `baoangiang.com.vn`                     |  10.738 |
-| 37 | `fk.39.net`                             |   9.812 |
-| 38 | `vov.vn`                                |   9.784 |
-| 39 | `cancer.39.net`                         |   8.415 |
-| 40 | `khoahocphothong.vn`                    |   8.143 |
-| 41 | `jb39.com`                              |   7.306 |
-| 42 | `youmed.vn`                             |   7.189 |
-| 43 | `vov2.vov.vn`                           |   6.899 |
-| 44 | `nk.39.net`                             |   6.650 |
-| 45 | `phuyen.baodaklak.vn`                   |   6.252 |
-| 46 | `msdmanuals.cn`                         |   6.173 |
-| 47 | `heart.39.net`                          |   5.965 |
-| 48 | `article.iiyi.com`                      |   5.641 |
-| 49 | `suckhoeviet.org.vn`                    |   5.627 |
-| 50 | `baoquangtri.vn`                        |   5.483 |
-| 51 | `pmc-ecm-healthblog.beta.pharmacity.io` |   5.333 |
-| 52 | `man.39.net`                            |   5.320 |
-| 53 | `nhandan.vn`                            |   5.225 |
-| 54 | `baovinhlong.com.vn`                    |   5.113 |
-| 55 | `gan.39.net`                            |   5.027 |
-| 56 | `tamanhhospital.vn`                     |   4.261 |
-| 57 | `tnb.39.net`                            |   4.178 |
-| 58 | `wei.39.net`                            |   3.894 |
-| 59 | `tuoitre.vn`                            |   3.893 |
-| 60 | `baidianfeng.familydoctor.com.cn`       |   3.798 |
-| 61 | `qdnd.vn`                               |   3.700 |
-| 62 | `vietnamplus.vn`                        |   3.695 |
-| 63 | `baogialai.com.vn`                      |   3.290 |
-| 64 | `shen.39.net`                           |   3.223 |
-| 65 | `ek.39.net`                             |   3.222 |
-| 66 | `tienphong.vn`                          |   3.021 |
-| 67 | `thaythuocvietnam.vn`                   |   2.927 |
-| 68 | `baoquangninh.vn`                       |   2.912 |
-| 69 | `bachmai.gov.vn`                        |   2.783 |
-| 70 | `baidu.com`                             |   2.631 |
-| 71 | `baochinhphu.vn`                        |   2.302 |
-| 72 | `dantri.com.vn`                         |   2.063 |
-| 73 | `gk.39.net`                             |   2.059 |
-| 74 | `vnexpress.net`                         |   2.055 |
-| 75 | `baolangson.vn`                         |   1.981 |
-| 76 | `sggp.org.vn`                           |   1.853 |
-| 77 | `gc.39.net`                             |   1.746 |
-| 78 | `pf.39.net`                             |   1.538 |
-| 79 | `health.people.com.cn`                  |   1.348 |
-| 80 | `baophutho.vn`                          |   1.288 |
-| 81 | `hanoimoi.vn`                           |   1.283 |
-| 82 | `benhviennhitrunguong.gov.vn`           |   1.200 |
-| 83 | `baotayninh.vn`                         |   1.198 |
-| 84 | `sj.39.net`                             |     942 |
-| 85 | `baothanhhoa.vn`                        |     782 |
-| 86 | `byby.39.net`                           |     439 |
-| 87 | `benhvienvietduc.org`                   |     425 |
-| 88 | `pharmacity.vn`                         |      69 |
-| 89 | `familydoctor.cn`                       |      44 |
-| 90 | `qy.familydoctor.com.cn`                |      40 |
-| 91 | `v.familydoctor.com.cn`                 |      10 |
-| 92 | `ask.familydoctor.com.cn`               |       3 |
-| 93 | `mega.vietnamplus.vn`                   |       2 |
-| 94 | `yanglao.familydoctor.com.cn`           |       2 |
-| 95 | `fk.99.com.cn`                          |       1 |
-| 96 | `special.vietnamplus.vn`                |       1 |
-| 97 | `ypk.familydoctor.com.cn`               |       1 |
+Corpus hiện có 1.194.469 URL thuộc 93 hostname chuẩn hóa, giảm đáng kể so với snapshot trước. Phân bổ hiện tại cho Member A gồm 366.854 URL trên 44 hostname; chi tiết được duy trì tại [member_01.md](member_01.md). Các số liệu này mô tả URL nguồn, không phải số document/chunk sau crawling, lọc, deduplication hoặc chunking.
 
-## 5. Nhận xét
-
-Corpus có **4.394.718 URL thuộc 97 domain**, với phân bố không đồng đều giữa các nguồn. Một số domain chiếm số lượng URL rất lớn, trong khi nhiều domain chỉ đóng góp một lượng nhỏ URL.
-
-Đặc biệt, các domain thuộc nhóm website thông tin y tế, tư vấn sức khỏe và bệnh viện chiếm phần lớn corpus. Bên cạnh đó, corpus cũng bao gồm các nguồn báo chí và truyền thông như `thanhnien.vn`, `vietnamnet.vn`, `vov.vn`, `tuoitre.vn`, `nhandan.vn`, `dantri.com.vn` và `vnexpress.net`.
-
-Do thống kê được thực hiện trên **URL trong snapshot**, các con số trên nên được hiểu là **phân bố nguồn URL ban đầu**, không phải phân bố số lượng document/chunk cuối cùng trong vector database. Sau các bước crawling, cleaning, filtering, deduplication và chunking, phân bố dữ liệu thực tế có thể thay đổi.
+Nguồn gốc thu thập và giấy phép của dữ liệu cần được đội dự án ghi nhận từ gói nguồn do cuộc thi cung cấp trước khi tái phân phối.

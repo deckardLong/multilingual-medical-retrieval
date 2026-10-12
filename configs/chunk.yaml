@@ -1,0 +1,12 @@
+version: 1          # increment if changing logic chunking
+method: structure
+tokenizer: BAAI/bge-m3 
+contextual_prefix: true
+structure:
+  target_tokens: 180
+  hard_tokens: 320  # if unit gets longer => Recursive
+  heading_max_chars: 90
+recursive:
+  chunk_size: 320
+  chunk_overlap: 40
+  separators: ["\n\n", "\n", ". ", "; ", ", ", " ", ""]

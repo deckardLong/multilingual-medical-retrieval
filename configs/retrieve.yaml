@@ -1,0 +1,21 @@
+qdrant:
+  collection_prefix: r2ai
+  alias: r2ai_live
+  hnsw_m: 16
+  hnsw_ef_construct: 128
+  upsert_batch: 512
+decompose:
+  mode: rule
+  max_subqueries: 4
+  keep_original: true
+search:
+  k_dense: 100
+  k_sparse: 100
+  k_fuse: 60
+  k_pool: 80
+  langs: null
+select:
+  max_docs: 10
+  min_score: null
+  rel_drop: 0.5
+  chunks_per_doc: 3

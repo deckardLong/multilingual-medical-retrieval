@@ -1,0 +1,9 @@
+name: bge-m3
+version: 1
+model: BAAI/bge-m3
+fp16: true
+max_length: 512
+batch_size: 64
+dim: 1024
+use_sparse: true
+slice_size: 4096    # number of chunks each encode turn 

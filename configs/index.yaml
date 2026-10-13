@@ -1,0 +1,23 @@
+collection_prefix: r2ai
+alias: r2ai_live
+
+on_disk_vectors: true
+on_disk_payload: true
+payload_fields: [chunk_id, uid, lang, start, end, heading, text]
+payload_indexes: [uid, lang] 
+
+# HNSW
+hnsw:
+  m: 16
+  ef_construct: 128
+  on_disk: false
+
+# Quantization
+quantization:
+  enabled: true
+  kind: int8
+  quantile: 0.99
+  always_ram: true
+
+# Upsert:
+upsert_batch: 512

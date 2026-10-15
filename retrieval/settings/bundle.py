@@ -44,7 +44,7 @@ class RetrievalSettings:
         return self.env.r2ai_derived_dir / "vectors" / self.embed_tag
     @property
     def manifest_path(self) -> Path: 
-        return self.env.r2ai_state_dir / "retrieval" / "manifest.parquet"
+        return self.env.r2ai_state_dir / "retrieval" / "manifest.jsonl"
 
     # Run ID
     def run_id(self) -> str:

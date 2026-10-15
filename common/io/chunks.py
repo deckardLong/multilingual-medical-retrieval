@@ -39,3 +39,7 @@ def write_chunks(chunks: list[Chunk], path: Path) -> None:
 # Read chunks
 def read_chunks(path: Path) -> list[dict]:
     return pq.read_table(path).to_pylist()
+
+def read_chunk_columns(path: Path, columns: list[str]) -> dict[str, list]:
+    """Chỉ đọc các cột cần dùng (nhẹ hơn read_chunks)."""
+    return pq.read_table(path, columns=columns).to_pydict()

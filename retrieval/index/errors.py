@@ -1,0 +1,2 @@
+class IndexingError(RuntimeError):
+    pass

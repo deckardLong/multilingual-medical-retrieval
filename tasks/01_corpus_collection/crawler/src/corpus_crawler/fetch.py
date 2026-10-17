@@ -32,6 +32,9 @@ def timestamp_now() -> str:
 
 
 class RespectfulFetcher:
+    _ROBOTS_REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+    _MAX_ROBOTS_REDIRECTS = 5
+
     def __init__(self, settings: Settings, session: aiohttp.ClientSession) -> None:
         self.settings = settings
         self.session = session
@@ -43,6 +46,26 @@ class RespectfulFetcher:
 
     def _domain_lock(self, domain: str) -> asyncio.Lock:
         return self._domain_locks.setdefault(domain, asyncio.Lock())
+
+    @staticmethod
+    def _robots_redirect_allowed(
+        current_url: str, target_url: str, domain: str
+    ) -> bool:
+        current_parts = urlsplit(current_url)
+        target_parts = urlsplit(target_url)
+        target_host = normalize_hostname(target_url)
+        return (
+            target_parts.scheme in {"http", "https"}
+            and target_host is not None
+            and (
+                target_host == domain
+                or target_host.endswith(f".{domain}")
+                or domain.endswith(f".{target_host}")
+            )
+            and not (
+                current_parts.scheme == "https" and target_parts.scheme != "https"
+            )
+        )
 
     async def _robots_policy(
         self, url: str, domain: str
@@ -67,25 +90,53 @@ class RespectfulFetcher:
                 return parser, float(delay), None
             parts = urlsplit(url)
             robots_url = f"{parts.scheme}://{parts.netloc}/robots.txt"
+            current_robots_url = robots_url
+            redirects = 0
             try:
-                async with self.session.get(
-                    robots_url,
-                    allow_redirects=False,
-                    timeout=aiohttp.ClientTimeout(total=self.settings.timeout_seconds),
-                ) as response:
-                    if response.status == 404:
-                        content = ""
-                    elif response.status == 200:
-                        content = (await response.content.read(512_000)).decode(
-                            "utf-8", errors="replace"
-                        )
-                    else:
-                        error = f"robots.txt returned HTTP {response.status}"
-                        self._robots_failures[domain] = (
-                            error,
-                            time.monotonic() + 300,
-                        )
-                        return None, 0.0, error
+                while True:
+                    async with self.session.get(
+                        current_robots_url,
+                        allow_redirects=False,
+                        timeout=aiohttp.ClientTimeout(
+                            total=self.settings.timeout_seconds
+                        ),
+                    ) as response:
+                        if response.status in self._ROBOTS_REDIRECT_STATUSES:
+                            location = response.headers.get("Location")
+                            if not location or redirects >= self._MAX_ROBOTS_REDIRECTS:
+                                error = "robots.txt redirect missing Location or exceeded 5 hops"
+                                self._robots_failures[domain] = (
+                                    error,
+                                    time.monotonic() + 300,
+                                )
+                                return None, 0.0, error
+                            target = urljoin(current_robots_url, location)
+                            if not self._robots_redirect_allowed(
+                                current_robots_url, target, domain
+                            ):
+                                error = "robots.txt redirect to an unrelated or unsafe URL"
+                                self._robots_failures[domain] = (
+                                    error,
+                                    time.monotonic() + 300,
+                                )
+                                return None, 0.0, error
+                            current_robots_url = target
+                            redirects += 1
+                            continue
+                        if response.status == 404:
+                            content = ""
+                        elif 200 <= response.status < 300:
+                            content = (await response.content.read(512_000)).decode(
+                                "utf-8", errors="replace"
+                            )
+                        else:
+                            error = f"robots.txt returned HTTP {response.status}"
+                            self._robots_failures[domain] = (
+                                error,
+                                time.monotonic() + 300,
+                            )
+                            return None, 0.0, error
+                        break
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
                 error = f"robots.txt unavailable: {type(exc).__name__}"
                 self._robots_failures[domain] = (error, time.monotonic() + 300)

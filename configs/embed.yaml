@@ -1,3 +1,4 @@
+backend: bge_m3
 name: bge-m3
 version: 1
 model: BAAI/bge-m3
@@ -8,3 +9,5 @@ dim: 1024
 use_sparse: true
 slice_size: 4096    # number of chunks each encode turn 
 query_max_length: 128
+query_prompt: ""
+doc_prompt: ""

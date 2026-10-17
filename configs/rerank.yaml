@@ -1,6 +1,6 @@
 enabled: true
+backend: bge_reranker 
 model: BAAI/bge-reranker-v2-m3
-device: cuda
 fp16: true
 batch_size: 32
 max_length: 512

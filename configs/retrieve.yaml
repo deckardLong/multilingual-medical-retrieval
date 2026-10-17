@@ -3,6 +3,7 @@ decompose:
   mode: rule
   max_subqueries: 4
   keep_original: true
+  min_part_tokens: 4
 
 # Search
 search:

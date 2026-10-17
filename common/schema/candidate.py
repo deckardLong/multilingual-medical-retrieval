@@ -13,3 +13,4 @@ class Candidate(BaseModel):
     p_end: int
     score: float
     text: str | None = None
+    ctx: str | None = None

@@ -3,7 +3,7 @@ alias: r2ai_live
 
 on_disk_vectors: true
 on_disk_payload: true
-payload_fields: [chunk_id, uid, lang, start, end, heading, text]
+payload_fields: [chunk_id, uid, doc_id, lang, start, end, p_start, p_end, heading, ctx, text]
 payload_indexes: [uid, lang] 
 
 # HNSW

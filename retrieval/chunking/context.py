@@ -4,8 +4,7 @@
 def make_ctx(contextual_prefix: bool, title: str, heading: str) -> str:
     if not contextual_prefix:
         return ""
-    t, h = title.strip()
-    heading.strip()
+    t, h = title.strip(), heading.strip()
     return f"{t} | {h}" if h and h != t else t
 
 # Embed text

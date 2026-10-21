@@ -2,11 +2,14 @@ from typing import Callable, Iterator, TypeVar
 
 T = TypeVar("T")
 
-def slices(n: int, size: int) -> Iterator[tuple[int, int]]:
-    """(a, b) nửa mở chia n phần tử thành các lát tối đa `size`."""
+def slices(n: int, size: int, start: int = 0) -> Iterator[tuple[int, int]]:
+    """(a, b) nửa mở chia n phần tử thành các lát tối đa `size`, bắt đầu từ phần tử `start`
+    (resume: phần trước `start` đã mã hoá xong từ lần chạy trước)."""
     if size <= 0:
         raise ValueError("size phải > 0")
-    for a in range(0, n, size):
+    if start < 0:
+        raise ValueError("start không được âm")
+    for a in range(start, n, size):
         yield a, min(a + size, n)
 
 def is_oom(e: BaseException) -> bool:

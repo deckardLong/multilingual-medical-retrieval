@@ -62,3 +62,24 @@ def read_vectors(path: Path) -> VectorBatch:
 def read_vector_ids(path: Path) -> list[str]:
     """Chỉ đọc cột chunk_id (rẻ): để kiểm tra khớp với shard chunk trước khi động vào index."""
     return pq.read_table(path, columns=["chunk_id"]).column("chunk_id").to_pylist()
+
+def merge_vector_parts(parts: list[Path], out_path: Path) -> int:
+    """Nối các file vector cùng schema thành một file, ghi nguyên tử và theo luồng (không nạp cả shard vào RAM).
+    Trả số dòng đã ghi. Danh sách rỗng là lỗi: chỗ gọi phải tự ghi file rỗng vì ở đây không biết `dim`."""
+    if not parts:
+        raise ValueError("không có part nào để gộp")
+    out_path = Path(out_path); out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp, n, writer = out_path.with_suffix(".tmp"), 0, None
+    try:
+        for p in parts:
+            f = pq.ParquetFile(p)
+            if writer is None:
+                writer = pq.ParquetWriter(tmp, f.schema_arrow, compression="zstd")
+            for rb in f.iter_batches(batch_size=4096):
+                writer.write_table(pa.Table.from_batches([rb]))
+                n += rb.num_rows
+    finally:
+        if writer is not None:
+            writer.close()
+    os.replace(tmp, out_path)
+    return n

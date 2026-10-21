@@ -26,6 +26,7 @@ class ChunkCfg(Cfg):
         return self
 
     # Define ver
+    @property
     def ver(self) -> str:
         return f"{self.method}-v{self.version}"
 

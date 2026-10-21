@@ -1,0 +1,15 @@
+# Bài nộp theo đúng đặc tả BTC: một file .json (danh sách các {id, relevant_docs, relevant_chunks}) nén trong một file .zip.
+candidates_path: candidates/latest.jsonl   # đầu ra của retrieval (hợp đồng C2)
+output_dir: submissions
+json_name: submission.json                 # tên file duy nhất nằm trong zip (không thư mục con)
+
+build:
+  max_docs: null                           # null: lấy đúng số doc mà bước select đã chọn
+  max_chunks: null                         # null: lấy hết chunk đã chọn của mỗi truy vấn
+
+check:
+  btc_ids_path: corpus/raw/links_corpus.parquet         # danh sách {id, url} của BTC; để kiểm tra doc_id tiếng Việt/Trung
+  max_chunk_tokens: 1024                   # BTC khuyến nghị chunk_text không quá khoảng 1.024 token
+  token_counter: approx
+
+log_csv: reports/submissions.csv

@@ -21,7 +21,9 @@ def pending_chunk_jobs(corpus_dir: Path, chunks_dir: Path) -> list[ChunkJob]:
     if not corpus_dir.exists():
         return []
     jobs = []
-    for p in sorted([*corpus_dir.rglob("*.jsonl.zst"), *corpus_dir.rglob("*.jsonl")]):
+    docs_root = corpus_dir / "viz" / "docs"
+    scan = docs_root if docs_root.is_dir() else corpus_dir
+    for p in sorted([*scan.rglob("*.jsonl.zst"), *scan.rglob("*.jsonl")]):
         rel = p.relative_to(corpus_dir)
         out = chunks_dir / rel.parent / (_stem(p) + ".parquet")
         if not out.exists():

@@ -1,0 +1,45 @@
+﻿domain,pending_urls,blocked_urls,http_errors,access_errors,sitemap_urls_found,sitemap_pending_matches,sitemap_status,sitemap_detail,method_recommendation
+article.iiyi.com,709,20,0,"robots.txt unavailable: TimeoutError,robots.txt returned HTTP 521",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+ask.39.net,0,3,56,"HTTP 404,ClientConnectorError: Cannot connect to host ask.39.net:443 ssl:default [None],ClientConnectionResetError: Cannot write to closing transport,ServerDisconnectedError: Server disconnected,robots.txt unavailable: ClientConnectionResetError,robots.txt unavailable: ClientConnectorError",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+baidu.com,0,11,0,Disallowed by robots.txt,0,0,,,Bỏ qua URL bị robots disallow; chỉ dùng route khác nếu robots.txt cho phép.
+baoangiang.com.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+baocantho.com.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+baochinhphu.vn,0,90,1,"Cross-domain redirect not fetched,HTTP 404",0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+baogialai.com.vn,0,0,3,HTTP 404,0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+baohaiphong.vn,16266,20,0,"HTTP 403; access not bypassed,robots.txt returned HTTP 406",0,0,error,"ParseError: no element found: line 5428, column 56",Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+baoquangninh.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+baoquangtri.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+baotayninh.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+baovinhlong.com.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+benhvienvietduc.org,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+bingli.iiyi.com,0,5,0,"robots.txt unavailable: TimeoutError,robots.txt returned HTTP 521",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+byby.39.net,17,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+cnkang.com,40026,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+ek.39.net,428,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+hanoimoi.vn,1263,20,0,HTTP 403; access not bypassed,0,0,error,"ParseError: no element found: line 5468, column 54",Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+health.people.com.cn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+khoahocphothong.vn,8123,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+laodong.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+man.39.net,362,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+msdmanuals.cn,0,0,70,HTTP 404,0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+nhathuoclongchau.com.vn,79578,20,0,HTTP 403; access not bypassed,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+nk.39.net,742,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+pf.39.net,65,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+phunusuckhoe.giadinhonline.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+qdnd.vn,0,0,3700,Redirect missing Location or exceeded 5 hops,0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+qihuangzhishu.com,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+sggp.org.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+tamanhhospital.vn,0,14,0,HTTP 403; access not bypassed,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+test.pmphai.com,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+tiemchunglongchau.com.vn,0,0,5,HTTP 404,0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+tnb.39.net,697,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+tuoitre.vn,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+vietnamnet.vn,0,2,1,"robots.txt unavailable: TimeoutError,Cross-domain redirect not fetched,HTTP 404",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+vnexpress.net,0,0,505,HTTP 404,0,0,,,Kiểm tra access_errors; giảm tốc độ hoặc dừng nếu host tiếp tục từ chối.
+vov.vn,9720,20,0,robots.txt returned HTTP 403,0,0,robots_unavailable,robots.txt returned HTTP 403,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+woman.39.net,667,20,0,robots.txt returned HTTP 301,0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+youlai.cn,0,1,17,"robots.txt unavailable: TimeoutError,HTTP 404",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+youmed.vn,7169,20,0,"robots.txt unavailable: TimeoutError,HTTP 403; access not bypassed",0,0,http_error,Sitemap returned HTTP 403: https://youmed.vn/tin-tuc/sitemap_index.xml,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.
+zhongyibaodian.net,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+zydcd.com,0,0,0,,0,0,,,HTML trực tiếp; sitemap chỉ để tìm URL; API/trình duyệt chỉ khi được công khai và cho phép.
+zysjonline.com,6571,20,0,"robots.txt unavailable: TimeoutError,robots.txt returned HTTP 403",0,0,,,Dừng crawl host; xin phép hoặc dùng API/dataset công khai được nhà xuất bản cho phép.

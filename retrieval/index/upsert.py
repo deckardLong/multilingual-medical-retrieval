@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 from qdrant_client import models as m
 from common.io import read_chunk_columns, iter_vectors, read_vector_ids
 from .errors import IndexingError
@@ -19,7 +20,8 @@ def count_uids(client, collection: str, uids: list[str]) -> int:
     return sum(client.count(collection, count_filter=uid_filter(b), exact=True).count for b in uid_batches(uids))
 
 def upsert_shard(client, collection: str, chunks_path: Path, vectors_path: Path, index_cfg, *,
-                 use_sparse: bool, verify: bool = True) -> UpsertStats:
+                 use_sparse: bool, verify: bool = True,
+                 on_progress: Callable[[int], None] | None = None) -> UpsertStats:
     """Đưa một shard vào Qdrant. Idempotent: xóa mọi điểm của các doc (uid) trong shard rồi chèn lại,
     nên doc đổi nội dung / ít chunk hơn không để lại điểm cũ. Kiểm tra khớp TRƯỚC khi xóa."""
     fields = sorted(set(index_cfg.payload_fields) | {"chunk_id", "uid"})
@@ -36,6 +38,8 @@ def upsert_shard(client, collection: str, chunks_path: Path, vectors_path: Path,
         pts = build_points(vb, cols, pos, index_cfg.payload_fields, use_sparse)
         client.upsert(collection, pts, wait=True)
         n += len(pts)
+        if on_progress:
+            on_progress(len(pts))
     if verify:
         got = count_uids(client, collection, uids)
         if got != n:

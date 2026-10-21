@@ -1,7 +1,6 @@
 import logging
 from common.schema import Candidate, SparseVec
 from .decompose import build_decomposer
-from .fuse import rrf_merge
 from .hybrid import HybridSearcher
 
 log = logging.getLogger(__name__)
@@ -34,9 +33,8 @@ class Retriever:
         pools, errors = [], {}
         for i, d in enumerate(decs):
             try:
-                lists = [self.searcher.search(*vecs[q]) for q in d.queries]
-                merged = rrf_merge(lists, self.s.retrieve.search.rrf_k, self.s.retrieve.search.k_pool)
-                pools.append(self.reranker.rerank(d.rerank_queries, merged))
+                candidates = self.searcher.search([vecs[q] for q in d.queries])
+                pools.append(self.reranker.rerank(d.rerank_queries, candidates))
             except Exception as e:                  # noqa: BLE001
                 log.error("truy vấn %d lỗi: %s", i, e)
                 pools.append([]); errors[i] = f"{type(e).__name__}: {e}"

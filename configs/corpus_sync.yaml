@@ -1,0 +1,13 @@
+# Tải kho ngữ liệu đã crawl (B) từ HuggingFace về đúng chỗ retrieval/* đọc (env.r2ai_corpus_dir, ROOT/queries).
+# Chỉ chạy được trên máy có mạng ra ngoài thật — sandbox của Claude không có quyền tới huggingface.co.
+repo_id: ai-guru-medical-retrieval/multilingual-medical-retrieval-corpus
+repo_type: dataset
+revision: main
+
+allow_patterns:
+  - "corpus/viz/docs/**/*.jsonl.zst"   # shard doc đã crawl (hợp đồng C1)
+  - "corpus/raw/links_corpus.parquet"  # danh sách id+url gốc của BTC — dùng kiểm tra doc_id khi nộp bài
+  - "corpus/schema/*.json"             # schema tham khảo, không dùng để chạy
+  - "queries/query.parquet"            # tập truy vấn public test
+
+max_workers: 8

@@ -1,0 +1,8 @@
+{
+  "executionEnvironments": [
+    {
+      "root": "tasks/01_corpus_collection/crawler",
+      "extraPaths": ["tasks/01_corpus_collection/crawler/src"]
+    }
+  ]
+}

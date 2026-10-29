@@ -1,4 +1,4 @@
-# multilingual-medical-retrieval
+# Multilingual Medical Retrieval
 
 Hệ thống truy hồi tài liệu y khoa đa ngôn ngữ (Việt/Anh/Trung) cho một truy vấn tiếng Việt — bài thi R2AI2026. Chi tiết đề bài và cách chấm điểm: [competition.md](competition.md).
 

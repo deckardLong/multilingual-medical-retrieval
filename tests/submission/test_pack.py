@@ -28,6 +28,24 @@ def test_read_zip_gives_back_the_same_items(tmp_path):
     assert read_zip(z) == ITEMS
 
 
+def test_int_doc_ids_are_written_as_numbers_and_read_back_the_same(tmp_path):
+    p = write_json(ITEMS, tmp_path / "s.json", int_doc_ids=True)
+    first = json.loads(p.read_text("utf-8"))[0]
+    assert first == {"id": 1, "relevant_docs": [3], "relevant_chunks": [{"doc_id": 3, "chunk_text": "triệu chứng 糖尿病"}]}
+    assert read_zip(make_zip(p, tmp_path / "b.zip", "s.json")) == ITEMS
+
+
+def test_default_doc_ids_stay_strings_with_indentation(tmp_path):
+    text = write_json(ITEMS, tmp_path / "s.json").read_text("utf-8")
+    assert '"relevant_docs": [\n      "3"\n    ]' in text
+
+
+def test_boolean_doc_id_is_still_rejected(tmp_path):
+    bad = [{"id": 1, "relevant_docs": [True], "relevant_chunks": []}]
+    with pytest.raises(ValidationError):
+        read_zip(_zip(tmp_path / "z.zip", {"s.json": json.dumps(bad)}))
+
+
 def _zip(path, files):
     with zipfile.ZipFile(path, "w") as z:
         for name, data in files.items():

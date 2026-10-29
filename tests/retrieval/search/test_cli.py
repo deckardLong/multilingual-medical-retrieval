@@ -93,7 +93,14 @@ def test_run_select_main(cli, capsys):
     assert "→" in capsys.readouterr().out and len(list((cli.out / "re").glob("*.jsonl"))) == 1
 
 
-def test_run_select_requires_the_pool_argument(cli):
-    with pytest.raises(SystemExit) as e:
-        cli.run(rs)
-    assert e.value.code == 2
+def test_run_select_defaults_to_the_newest_pool(cli, capsys):
+    q = cli.queries([1, 2], ["bệnh tiểu đường", "cao huyết áp"])
+    cli.run(rq, "--queries", q, "--out-dir", str(cli.out))
+    (pool,) = cli.out.glob("*.pool.jsonl")
+    assert cli.run(rs, "--out-dir", str(cli.out)) == 0
+    assert pool.name in capsys.readouterr().out
+
+
+def test_run_select_without_any_pool_says_so(cli, tmp_path):
+    with pytest.raises(FileNotFoundError, match="run_queries"):
+        cli.run(rs, "--out-dir", str(tmp_path / "trống"))

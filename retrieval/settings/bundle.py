@@ -52,6 +52,12 @@ class RetrievalSettings:
         exp = self.env.r2ai_experiment or "base"
         return f"{datetime.now():%Y%m%d-%H%M}_{exp}_{self.h_index[:4]}{q}"
 
+    def pool_key(self) -> str:
+        """Dấu vân tay của mọi thứ ảnh hưởng tới pool (không gồm select, vì chọn diễn ra sau): dùng để nối tiếp lượt chạy dở."""
+        r = self.retrieve
+        d = lambda c: c.model_dump(mode="json")
+        return sha([self.collection, d(r.decompose), d(r.search), d(self.rerank)])
+
     # Run card
     def run_card(self) -> dict:
         d = lambda c: c.model_dump(mode="json")

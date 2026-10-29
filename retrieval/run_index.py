@@ -1,27 +1,15 @@
 """python -m retrieval.run_index [--watch --interval 900] [--limit N]"""
 import argparse, logging, time
-from contextlib import nullcontext
 from common.config import Env
 from retrieval.settings import load_all
 from retrieval.chunking import build_chunker, build_counter
 from retrieval.embedding import build_embedder
 from retrieval.index import make_client, Manifest
 from retrieval.pipeline import run_cycle
-from retrieval.progress import tqdm_bars
+from retrieval.progress import log_redirect, tqdm_bars
 
 log = logging.getLogger("run_index")
 
-
-def _log_redirect(enabled: bool):
-    """Khi có thanh tiến độ, log phải đi qua tqdm.write — nếu không, mỗi dòng log sẽ cắt ngang thanh và để lại
-    một bản sao của thanh trên màn hình."""
-    if not enabled:
-        return nullcontext()
-    try:
-        from tqdm.contrib.logging import logging_redirect_tqdm
-    except ImportError:
-        return nullcontext()
-    return logging_redirect_tqdm()
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -48,7 +36,7 @@ def main() -> int:
 
     show = not a.no_progress
     make_bar = tqdm_bars(show)
-    with _log_redirect(show):
+    with log_redirect(show):
         while True:
             r = run_cycle(s, client, manifest, chunker, embedder, a.limit, make_bar)
             log.info("chunk %d shard | embed %d shard | index %d shard (%d điểm) | lỗi: %s",

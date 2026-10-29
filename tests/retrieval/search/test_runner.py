@@ -106,6 +106,99 @@ def test_only_the_failing_query_is_reported(run_world, tmp_path):
     assert "qdrant sập" in card["errors"][str(QS[1].qid)]
 
 
+# ---- resume -----------------------------------------------------------------------------------------------------
+
+def _interrupted_run(run_world, out, qs, stop_at):
+    s, client, emb, rr = run_world
+    r = Retriever(s, client, emb, rr)
+    orig, n = r.searcher.search, {"n": 0}
+    def search(vectors):
+        n["n"] += 1
+        if n["n"] == stop_at:
+            raise KeyboardInterrupt
+        return orig(vectors)
+    r.searcher.search = search
+    with pytest.raises(KeyboardInterrupt):
+        run_queries(s, r, qs, out)
+    return s
+
+
+def test_interrupted_run_resumes_with_only_the_missing_queries(run_world, tmp_path):
+    out = tmp_path / "cand"
+    s = _interrupted_run(run_world, out, QS, stop_at=2)
+    assert len(list(out.glob(".resume-*.jsonl"))) == 1 and not list(out.glob("*.pool.jsonl"))
+    _, client, emb, rr = run_world
+    r = Retriever(s, client, emb, rr)
+    orig, calls = r.searcher.search, []
+    r.searcher.search = lambda v: (calls.append(1), orig(v))[1]
+    res = run_queries(s, r, QS, out)
+    assert len(calls) == 1 and res["failed"] == []
+    assert [x.qid for x in read_results(res["out"])] == [7, 9] and all(x.candidates for x in read_results(res["pool"]))
+    assert json.loads((out / f"{res['run_id']}.run_card.json").read_text(encoding="utf-8"))["resumed"] == 1
+    assert not list(out.glob(".resume-*.jsonl"))
+
+
+def test_resumed_result_equals_an_uninterrupted_run(run_world, tmp_path):
+    s = _interrupted_run(run_world, tmp_path / "a", QS, stop_at=2)
+    _, client, emb, rr = run_world
+    resumed = run_queries(s, Retriever(s, client, emb, rr), QS, tmp_path / "a")
+    fresh = run_queries(s, Retriever(s, client, emb, rr), QS, tmp_path / "b")
+    assert list(read_results(resumed["pool"])) == list(read_results(fresh["pool"]))
+
+
+def test_fresh_flag_ignores_the_checkpoint(run_world, tmp_path):
+    out = tmp_path / "cand"
+    s = _interrupted_run(run_world, out, QS, stop_at=2)
+    _, client, emb, rr = run_world
+    r = Retriever(s, client, emb, rr)
+    orig, calls = r.searcher.search, []
+    r.searcher.search = lambda v: (calls.append(1), orig(v))[1]
+    run_queries(s, r, QS, out, resume=False)
+    assert len(calls) == 2
+
+
+def test_changed_query_text_is_not_taken_from_the_checkpoint(run_world, tmp_path):
+    out = tmp_path / "cand"
+    s = _interrupted_run(run_world, out, QS, stop_at=2)
+    _, client, emb, rr = run_world
+    r = Retriever(s, client, emb, rr)
+    orig, calls = r.searcher.search, []
+    r.searcher.search = lambda v: (calls.append(1), orig(v))[1]
+    run_queries(s, r, [Query(qid=7, text="hen suyễn khó thở"), QS[1]], out)
+    assert len(calls) == 2
+
+
+def test_failed_queries_are_retried_on_the_next_run(run_world, tmp_path):
+    s, client, emb, rr = run_world
+    out = tmp_path / "cand"
+    r = Retriever(s, client, emb, rr)
+    orig, n = r.searcher.search, {"n": 0}
+    def flaky(v):
+        n["n"] += 1
+        if n["n"] == 2:
+            raise RuntimeError("qdrant sập")
+        return orig(v)
+    r.searcher.search = flaky
+    assert run_queries(s, r, QS, out)["failed"] == [9]
+    assert len(list(out.glob(".resume-*.jsonl"))) == 1
+    res = run_queries(s, Retriever(s, client, emb, rr), QS, out)
+    assert res["failed"] == [] and all(x.candidates for x in read_results(res["pool"]))
+
+
+def test_checkpoint_skips_a_torn_last_line_and_keeps_appending_cleanly(tmp_path):
+    from retrieval.results import QueryResult
+    from retrieval.search.checkpoint import Checkpoint
+    path = tmp_path / "ck.jsonl"
+    ck = Checkpoint(path)
+    ck.add(QueryResult(qid=1, query="a", candidates=[])); ck.close()
+    with open(path, "a", encoding="utf-8") as f:
+        f.write('{"qid": 2, "query": "b", "candid')
+    ck = Checkpoint(path)
+    assert set(ck.load([Query(qid=1, text="a"), Query(qid=2, text="b")])) == {1}
+    ck.add(QueryResult(qid=2, query="b", candidates=[])); ck.close()
+    assert set(Checkpoint(path).load([Query(qid=1, text="a"), Query(qid=2, text="b")])) == {1, 2}
+
+
 # ---- chọn lại từ pool -------------------------------------------------------------------------------------------
 
 def test_run_select_reuses_pool_with_new_thresholds(run_world, tmp_path):

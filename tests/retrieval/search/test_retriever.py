@@ -53,6 +53,32 @@ def _spy_search(r):
     return calls
 
 
+# ---- chỉ rerank phần đầu pool -----------------------------------------------------------------------------------
+
+def test_only_top_n_is_reranked_and_the_tail_follows_below_it(world):
+    s, client, emb, rr = world
+    s.rerank = s.rerank.model_copy(update=dict(top_n=2))
+    spy = SpyReranker(rr)
+    r = Retriever(s, client, emb, spy)
+    fused = r.searcher.search([(emb.encode_queries(["bệnh"]).dense[0].tolist(), None)])
+    assert len(fused) > 2
+    (pool,), _ = r.pools(["bệnh"])
+    assert [n for _, n in spy.calls] == [2]
+    head, tail = pool[:2], pool[2:]
+    assert {c.chunk_id for c in tail} == {c.chunk_id for c in fused[2:]}            # đuôi giữ nguyên thứ tự hybrid
+    assert [c.chunk_id for c in tail] == [c.chunk_id for c in fused if c.chunk_id in {t.chunk_id for t in tail}]
+    assert min(c.score for c in head) >= max(c.score for c in tail)
+    assert [c.score for c in pool] == sorted((c.score for c in pool), reverse=True)
+
+
+def test_top_n_none_reranks_the_whole_pool(world):
+    s, client, emb, rr = world
+    s.rerank = s.rerank.model_copy(update=dict(top_n=None))
+    spy = SpyReranker(rr)
+    (pool,), _ = Retriever(s, client, emb, spy).pools(["bệnh"])
+    assert [n for _, n in spy.calls] == [len(pool)]
+
+
 # ---- kết quả tìm kiếm -------------------------------------------------------------------------------------------
 
 def test_finds_the_right_doc(world):
@@ -92,6 +118,19 @@ def test_pools_keep_input_order_and_length(world):
 
 def test_empty_batch(world):
     assert _r(world).pools([]) == ([], {})
+
+
+def test_progress_bar_advances_once_per_query(world):
+    class Bar:
+        total = 0
+        def __init__(self, desc, total, unit="it"): Bar.total = total
+        def __enter__(self): return self
+        def __exit__(self, *exc): return False
+        def advance(self, n=1): Bar.advanced = getattr(Bar, "advanced", 0) + n
+        def where(self, label): Bar.label = label
+
+    _r(world).pools(["bệnh tiểu đường", "cao huyết áp", "hen suyễn"], Bar)
+    assert (Bar.total, Bar.advanced) == (3, 3) and "rerank" in Bar.label
 
 
 def test_empty_collection_gives_empty_pool(world):

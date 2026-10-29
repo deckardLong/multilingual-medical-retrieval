@@ -6,6 +6,7 @@
 Khi đầu ra không phải terminal (ghi log ra file, chạy nền) thanh vẫn chạy nhưng chỉ in lại mỗi 10 giây,
 để file log không phình ra hàng nghìn dòng."""
 import sys
+from contextlib import nullcontext
 from typing import Callable, Protocol
 
 TTY_INTERVAL, FILE_INTERVAL = 0.1, 10.0
@@ -61,6 +62,18 @@ class Progress:
             self._bar.close()
             self._bar = None
         return False
+
+
+def log_redirect(enabled: bool):
+    """Khi có thanh tiến độ, log phải đi qua tqdm.write — nếu không, mỗi dòng log sẽ cắt ngang thanh và để lại
+    một bản sao của thanh trên màn hình."""
+    if not enabled:
+        return nullcontext()
+    try:
+        from tqdm.contrib.logging import logging_redirect_tqdm
+    except ImportError:
+        return nullcontext()
+    return logging_redirect_tqdm()
 
 
 BarFactory = Callable[[str, int, str], ProgressLike]

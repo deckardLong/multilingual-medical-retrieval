@@ -20,8 +20,10 @@ def test_unknown_vietnamese_or_chinese_id_is_an_error_naming_the_query():
     assert p.qid == 6 and "77" in p.msg
 
 
-def test_english_pmids_are_not_in_the_btc_list_and_are_not_flagged():
-    assert check_ids([qr(1, cand_of("en:26739349", 0, "a"))], KNOWN) == []
+def test_english_docs_are_checked_against_the_btc_list_too():
+    assert check_ids([qr(1, cand_of("en:3", 0, "a"))], KNOWN) == []
+    (p,) = check_ids([qr(2, cand_of("en:26739349", 0, "a"))], KNOWN)
+    assert p.level == "error" and "26739349" in p.msg
 
 
 def test_unknown_ids_are_counted_once_per_query():

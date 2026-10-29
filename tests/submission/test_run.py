@@ -13,7 +13,7 @@ def qr(qid, *cands):
 
 
 RESULTS = [qr(1, cand_of("vi:1", 0, "a"), cand_of("vi:1", 1, "b"), cand_of("zh:2", 0, "c")),
-           qr(2, cand_of("en:26739349", 0, "pubmed"))]
+           qr(2, cand_of("en:3", 0, "pubmed"))]
 
 
 def make(cfg, tmp_path, results=RESULTS, expected={1, 2}, known=KNOWN, **kw):
@@ -24,8 +24,15 @@ def test_happy_path_writes_only_the_zip_and_it_reads_back(submit_cfg, tmp_path):
     res = make(submit_cfg, tmp_path)
     assert res["zip"] == tmp_path / "out" / "run1.zip" and [p.name for p in (tmp_path / "out").iterdir()] == ["run1.zip"]
     items = read_zip(res["zip"])
-    assert [i.id for i in items] == [1, 2] and items[0].relevant_docs == ["1", "2"] and items[1].relevant_docs == ["26739349"]
+    assert [i.id for i in items] == [1, 2] and items[0].relevant_docs == ["1", "2"] and items[1].relevant_docs == ["3"]
     assert [c.chunk_text for c in items[0].relevant_chunks] == ["a", "b", "c"]
+
+
+def test_zip_over_the_size_limit_is_deleted_and_rejected_without_logging(submit_cfg, tmp_path):
+    log = tmp_path / "log.csv"
+    with pytest.raises(SubmissionRejected, match="vượt giới hạn"):
+        make(submit_cfg.model_copy(update={"max_zip_mb": 1e-6}), tmp_path, log_csv=log)
+    assert list((tmp_path / "out").iterdir()) == [] and not log.exists()
 
 
 def test_stats_and_digest(submit_cfg, tmp_path):
@@ -41,15 +48,19 @@ def test_missing_query_is_rejected_and_nothing_is_written(submit_cfg, tmp_path):
     assert e.value.report.errors and not (tmp_path / "out").exists() and not log.exists()
 
 
-def test_unknown_doc_id_is_rejected(submit_cfg, tmp_path):
-    with pytest.raises(SubmissionRejected, match="không thuộc danh sách"):
-        make(submit_cfg, tmp_path, results=[qr(1, cand_of("vi:99", 0, "a")), RESULTS[1]])
+def test_unknown_doc_ids_are_dropped_with_one_warning(submit_cfg, tmp_path):
+    res = make(submit_cfg, tmp_path, results=[qr(1, cand_of("vi:99", 0, "a"), cand_of("vi:1", 0, "b")), RESULTS[1]])
+    item = read_zip(res["zip"])[0]
+    assert item.relevant_docs == ["1"] and [c.doc_id for c in item.relevant_chunks] == ["1"]
+    (w,) = [w for w in res["warnings"] if "không thuộc danh sách" in w.msg]
+    assert "bỏ 1 doc_id" in w.msg and "99" in w.msg
 
 
 def test_all_problems_are_reported_together(submit_cfg, tmp_path):
     with pytest.raises(SubmissionRejected) as e:
         make(submit_cfg, tmp_path, results=[qr(1, cand_of("vi:99", 0, "a"))])
-    assert len(e.value.report.errors) == 2                                  # id lạ + thiếu truy vấn 2
+    assert len(e.value.report.errors) == 1 and "thiếu 1" in e.value.report.errors[0].msg
+    assert any("không thuộc danh sách" in w.msg for w in e.value.report.warnings)
 
 
 def test_without_known_ids_or_expected_ids_it_still_builds_but_warns(submit_cfg, tmp_path):

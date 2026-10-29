@@ -8,6 +8,7 @@ from retrieval.embedding import build_embedder
 from retrieval.index import Manifest
 from retrieval.pipeline import run_cycle
 from retrieval.rerank import build_reranker
+from retrieval.settings.bundle import RetrievalSettings
 
 TOPICS = {
     "vi:1": ("Bệnh tiểu đường", "Triệu chứng của bệnh tiểu đường gồm khát nhiều và tiểu nhiều.\nĐiều trị tiểu đường bằng insulin và chế độ ăn."),
@@ -44,6 +45,7 @@ def run_world(world):
     s, client, emb, rr = world
     counter = itertools.count(1)
     s.run_id = lambda: f"run{next(counter)}"
+    s.pool_key = lambda: RetrievalSettings.pool_key(s)
     s.run_card = lambda: {"collection": s.collection, "retrieve": s.retrieve.model_dump(mode="json"),
                           "rerank": s.rerank.model_dump(mode="json")}
     return s, client, emb, rr

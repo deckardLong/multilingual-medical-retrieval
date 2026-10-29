@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Corpus + Derived + Query
+corpus/
+derived/
+queries/

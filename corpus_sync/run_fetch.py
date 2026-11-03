@@ -1,6 +1,6 @@
-"""python -m corpus_sync.run_fetch [--dry-run] [--partition a|b] [--no-docs] [--queries-only]
-   Tải kho ngữ liệu (B) + tập truy vấn (BTC) từ HuggingFace về chỗ retrieval/* đọc được, rồi sẵn sàng cho
-   `python -m retrieval.run_index`. CHỈ CHẠY TRÊN MÁY CÓ MẠNG RA NGOÀI THẬT VÀ (để index) GPU."""
+"""python -m corpus_sync.run_fetch [--dry-run] [--partition a|b] [--no-docs] [--queries-only] [--no-derived]
+   Tải kho ngữ liệu + tập truy vấn (BTC) + chunk/vector tính sẵn từ HuggingFace về chỗ retrieval/* đọc được, rồi
+   `python -m retrieval.run_index` chỉ còn nạp vào Qdrant (không cần GPU). CHỈ CHẠY TRÊN MÁY CÓ MẠNG RA NGOÀI THẬT."""
 import argparse
 from common.config import Env, ROOT, load_cfg
 from .hf import fetch, plan
@@ -12,10 +12,13 @@ def _patterns(cfg: SyncCfg, a: argparse.Namespace) -> list[str]:
     if a.queries_only:
         return ["queries/query.parquet"]
     pats = list(cfg.allow_patterns)
+    if a.no_derived:
+        pats = [p for p in pats if not p.startswith("derived/")]
     if a.no_docs:
         pats = [p for p in pats if "viz/docs" not in p]
     elif a.partition:
-        pats = [p.replace("viz/docs/**", f"viz/docs/{a.partition}/**") for p in pats]
+        # HF khớp bằng fnmatch: "b/**/*.x" đòi thêm một cấp thư mục nên không khớp "b/viz-b-1.x"; "b/*.x" thì khớp
+        pats = [p.replace("viz/docs/**/", f"viz/docs/{a.partition}/") for p in pats]
     return pats
 
 
@@ -26,6 +29,7 @@ def main() -> int:
     ap.add_argument("--partition", choices=["a", "b"], default=None, help="chỉ tải shard doc của một phân vùng")
     ap.add_argument("--no-docs", action="store_true", help="bỏ shard doc, chỉ tải queries/links/schema (nhẹ, nhanh)")
     ap.add_argument("--queries-only", action="store_true")
+    ap.add_argument("--no-derived", action="store_true", help="không tải chunk/vector tính sẵn (run_index sẽ tự chunk + embed bằng GPU)")
     a = ap.parse_args()
     env = Env()
     patterns = _patterns(cfg, a)
@@ -41,6 +45,9 @@ def main() -> int:
     ls = scan_local(env.r2ai_corpus_dir, ROOT / "queries" / "query.parquet", env.r2ai_corpus_dir / "raw" / "links_corpus.parquet")
     print(f"shard theo phân vùng: {ls.n_shards} | tổng {ls.bytes_total / 1e6:.1f} MB")
     print(f"links_corpus.parquet: {'có' if ls.has_links else 'CHƯA CÓ'} | query.parquet: {'có' if ls.has_queries else 'CHƯA CÓ'}")
+    for kind in ("chunks", "vectors"):
+        n = sum(1 for _ in (env.r2ai_derived_dir / kind).rglob("*.parquet"))
+        print(f"derived/{kind}: {n} file tính sẵn")
     if not ls.has_links:
         print("CẢNH BÁO: thiếu links_corpus.parquet — submission.checks.ids sẽ không kiểm tra được doc_id")
     if not ls.has_queries:

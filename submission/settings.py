@@ -6,8 +6,11 @@ from common.config import Cfg
 class BuildCfg(Cfg):
     max_docs: int | None
     max_chunks: int | None
+    split_max_words: int | None = None     # cắt chunk thành đoạn <= N từ theo câu (null: giữ nguyên chunk)
+    keep_full_chunk: bool = True           # khi cắt, vẫn nộp kèm chunk gốc (phủ cả đáp án dài lẫn ngắn)
+    expand_to_words: int | None = None     # nới chunk ra các câu kề trong doc gốc tới ~N từ (null: giữ nguyên chunk)
 
-    @field_validator("max_docs", "max_chunks")
+    @field_validator("max_docs", "max_chunks", "split_max_words", "expand_to_words")
     @classmethod
     def _positive(cls, v):
         if v is not None and v <= 0:
@@ -35,6 +38,8 @@ class SubmitCfg(Cfg):
     build: BuildCfg
     check: CheckCfg
     log_csv: Path
+    int_doc_ids: bool = False
+    max_zip_mb: float | None = None        # giới hạn dung lượng file nộp của BTC (MB = 10^6 byte cho chắc)
 
     @field_validator("json_name")
     @classmethod

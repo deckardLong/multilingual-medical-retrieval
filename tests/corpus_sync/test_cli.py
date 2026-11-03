@@ -4,6 +4,7 @@ from corpus_sync import run_fetch
 from corpus_sync.settings import SyncCfg
 
 BASE = ["corpus/viz/docs/**/*.jsonl.zst", "corpus/raw/links_corpus.parquet", "corpus/schema/*.json", "queries/query.parquet"]
+DERIVED = ["derived/chunks/*/viz/docs/**/*.parquet", "derived/vectors/*/viz/docs/**/*.parquet"]
 
 
 def cfg(**kw):
@@ -13,15 +14,42 @@ def cfg(**kw):
 @pytest.mark.parametrize("args,expected", [
     ([], BASE),
     (["--no-docs"], [p for p in BASE if "viz/docs" not in p]),
-    (["--partition", "a"], ["corpus/viz/docs/a/**/*.jsonl.zst", *BASE[1:]]),
+    (["--partition", "a"], ["corpus/viz/docs/a/*.jsonl.zst", *BASE[1:]]),
     (["--queries-only"], ["queries/query.parquet"]),
 ])
 def test_patterns_follow_the_cli_flags(args, expected):
+    assert run_fetch._patterns(cfg(), _ns(args)) == expected
+
+
+def _ns(args):
     a = run_fetch.argparse.ArgumentParser()
     a.add_argument("--dry-run", action="store_true"); a.add_argument("--partition", choices=["a", "b"], default=None)
     a.add_argument("--no-docs", action="store_true"); a.add_argument("--queries-only", action="store_true")
-    ns = a.parse_args(args)
-    assert run_fetch._patterns(cfg(), ns) == expected
+    a.add_argument("--no-derived", action="store_true")
+    return a.parse_args(args)
+
+
+@pytest.mark.parametrize("args,expected", [
+    ([], BASE + DERIVED),
+    (["--no-derived"], BASE),
+    (["--no-docs"], [p for p in BASE if "viz/docs" not in p]),
+    (["--partition", "b"], ["corpus/viz/docs/b/*.jsonl.zst", *BASE[1:],
+                            "derived/chunks/*/viz/docs/b/*.parquet", "derived/vectors/*/viz/docs/b/*.parquet"]),
+])
+def test_derived_patterns_follow_the_cli_flags(args, expected):
+    assert run_fetch._patterns(cfg().model_copy(update={"allow_patterns": BASE + DERIVED}), _ns(args)) == expected
+
+
+@pytest.mark.parametrize("partition", [None, "a", "b"])
+def test_patterns_select_the_right_repo_files_with_huggingface_matching(partition):
+    from huggingface_hub.utils import filter_repo_objects
+    repo = ["corpus/viz/docs/a/viz-a-00001.jsonl.zst", "corpus/viz/docs/b/viz-b-00026.jsonl.zst",
+            "derived/chunks/structure-v1-2cce67/viz/docs/a/viz-a-00001.parquet",
+            "derived/vectors/bge-m3-v1-b6048a/viz/docs/b/viz-b-00026.parquet", "README.md"]
+    pats = run_fetch._patterns(cfg().model_copy(update={"allow_patterns": BASE + DERIVED}),
+                               _ns(["--partition", partition] if partition else []))
+    got = set(filter_repo_objects(repo, allow_patterns=pats))
+    assert got == {p for p in repo if p != "README.md" and (partition is None or f"/docs/{partition}/" in p)}
 
 
 @pytest.fixture
@@ -29,6 +57,7 @@ def cli(monkeypatch, cfg_dir, tmp_path):
     """Cô lập hoàn toàn khỏi thư mục dự án thật: R2AI_CORPUS_DIR và run_fetch.ROOT (nơi main() tìm queries/) đều
     trỏ vào tmp_path. fetch()/plan() được giả lập — không gọi mạng, không chạm vào kho thật."""
     monkeypatch.setenv("R2AI_CORPUS_DIR", str(tmp_path / "corpus"))
+    monkeypatch.setenv("R2AI_DERIVED_DIR", str(tmp_path / "derived"))
     monkeypatch.setattr(run_fetch, "ROOT", tmp_path)
     calls = {}
 
@@ -84,8 +113,9 @@ def test_dry_run_prints_a_line_per_prefix_with_files_to_download(cli, monkeypatc
 
 def test_partition_flag_is_forwarded_to_fetch(cli, monkeypatch):
     run(monkeypatch, "--partition", "b")
-    assert cli["fetch"][1] == ["corpus/viz/docs/b/**/*.jsonl.zst", "corpus/raw/links_corpus.parquet",
-                               "corpus/schema/*.json", "queries/query.parquet"]
+    assert cli["fetch"][1] == ["corpus/viz/docs/b/*.jsonl.zst", "corpus/raw/links_corpus.parquet",
+                               "corpus/schema/*.json", "queries/query.parquet",
+                               "derived/chunks/*/viz/docs/b/*.parquet", "derived/vectors/*/viz/docs/b/*.parquet"]
 
 
 def test_queries_only_succeeds_without_fetching_docs_or_links(cli, monkeypatch, capsys):
@@ -104,6 +134,7 @@ def test_no_docs_skips_shards_but_still_checks_links_and_queries(cli, monkeypatc
 def test_exit_code_is_nonzero_when_everything_requested_is_still_missing(monkeypatch, cfg_dir, tmp_path):
     """fetch() không ghi gì (giả lập tải lỗi/thiếu quyền) dù patterns mặc định có xin cả hai — phải báo lỗi."""
     monkeypatch.setenv("R2AI_CORPUS_DIR", str(tmp_path / "corpus"))
+    monkeypatch.setenv("R2AI_DERIVED_DIR", str(tmp_path / "derived"))
     monkeypatch.setattr(run_fetch, "ROOT", tmp_path)
     monkeypatch.setattr(run_fetch, "fetch", lambda cfg, env, patterns=None: None)
     assert run(monkeypatch) == 1
@@ -111,6 +142,7 @@ def test_exit_code_is_nonzero_when_everything_requested_is_still_missing(monkeyp
 
 def test_exit_code_is_nonzero_when_only_links_are_still_missing(monkeypatch, cfg_dir, tmp_path):
     monkeypatch.setenv("R2AI_CORPUS_DIR", str(tmp_path / "corpus"))
+    monkeypatch.setenv("R2AI_DERIVED_DIR", str(tmp_path / "derived"))
     monkeypatch.setattr(run_fetch, "ROOT", tmp_path)
 
     def fetch_without_links(cfg, env, patterns=None):
@@ -123,6 +155,7 @@ def test_exit_code_is_nonzero_when_only_links_are_still_missing(monkeypatch, cfg
 
 def test_exit_code_is_nonzero_when_only_queries_are_still_missing(monkeypatch, cfg_dir, tmp_path):
     monkeypatch.setenv("R2AI_CORPUS_DIR", str(tmp_path / "corpus"))
+    monkeypatch.setenv("R2AI_DERIVED_DIR", str(tmp_path / "derived"))
     monkeypatch.setattr(run_fetch, "ROOT", tmp_path)
 
     def fetch_without_queries(cfg, env, patterns=None):

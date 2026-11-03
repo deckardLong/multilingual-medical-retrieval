@@ -32,7 +32,7 @@ def _check_item(it: SubItem, max_tokens: int, counter: TokenCounter) -> list[Pro
     out: list[Problem] = []
     bad_ids = [d for d in it.relevant_docs + [c.doc_id for c in it.relevant_chunks] if not _DIGITS.fullmatch(d)]
     if bad_ids:
-        out.append(Problem("error", f"doc_id phải là chuỗi chữ số (id của BTC hoặc PMID): {sample(sorted(set(bad_ids)))}", it.id))
+        out.append(Problem("error", f"doc_id phải là chuỗi chữ số (id trong file links của BTC): {sample(sorted(set(bad_ids)))}", it.id))
     if len(set(it.relevant_docs)) != len(it.relevant_docs):
         out.append(Problem("error", "relevant_docs có doc_id lặp", it.id))
     blank = sum(1 for c in it.relevant_chunks if not c.chunk_text.strip())

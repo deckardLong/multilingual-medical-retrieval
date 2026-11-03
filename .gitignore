@@ -150,6 +150,7 @@ activemq-data/
 # Environments
 .env
 .envrc
+.hf_corpus_cache/
 .venv
 env/
 venv/
@@ -221,3 +222,11 @@ __marimo__/
 corpus/
 derived/
 queries/
+
+# Đầu ra khi chạy (tái tạo được; có file > 100 MB GitHub không nhận)
+candidates/
+submissions/
+state/
+workspace/
+/links_corpus_vi_en_zh.parquet
+scoring_result.zip

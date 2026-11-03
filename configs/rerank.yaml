@@ -5,3 +5,4 @@ fp16: true
 batch_size: 32
 max_length: 512
 query_mode: max_over_subqueries
+top_n: 80          # chi rerank 80 chunk dau cua pool; phan sau giu thu tu hybrid (thoi gian rerank nhu cu)

@@ -1,5 +1,6 @@
 """Tải kho ngữ liệu từ HuggingFace Hub về một thư mục đệm, rồi xếp lại đúng layout mà retrieval/* cần:
-   <staging>/corpus/** → env.r2ai_corpus_dir/** (bỏ tiền tố "corpus/" của repo), <staging>/queries/** → ROOT/queries/**.
+   <staging>/corpus/** → env.r2ai_corpus_dir/** (bỏ tiền tố "corpus/" của repo), <staging>/queries/** → ROOT/queries/**,
+   <staging>/derived/** → env.r2ai_derived_dir/** (chunk + vector tính sẵn).
    CHỈ CHẠY TRÊN MÁY CÓ MẠNG RA NGOÀI THẬT. Sandbox của Claude không có quyền tới huggingface.co nên không tự chạy
    được ở đây; module này được viết để BẠN chạy, không phải để chạy trong phiên làm việc này."""
 import shutil
@@ -26,6 +27,7 @@ def fetch(cfg: SyncCfg, env: Env, patterns: list[str] | None = None, queries_dir
                       allow_patterns=patterns or cfg.allow_patterns, max_workers=cfg.max_workers, token=env.hf_token)
     place(STAGING / "corpus", env.r2ai_corpus_dir)
     place(STAGING / "queries", queries_dir or (ROOT / "queries"))
+    place(STAGING / "derived", env.r2ai_derived_dir)
 
 
 def place(src: Path, dst: Path) -> int:

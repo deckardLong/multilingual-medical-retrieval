@@ -96,12 +96,12 @@ Tên collection Qdrant và tên các file trung gian (`chunk_tag`, `embed_tag`, 
 ```bash
 python -m venv venv
 venv\Scripts\activate          # Windows; macOS/Linux: source venv/bin/activate
-pip install qdrant-client FlagEmbedding sentence-transformers torch transformers \
-            pydantic pydantic-settings pyarrow zstandard tqdm httpx trafilatura \
-            aiohttp protego langdetect scikit-learn pandas numpy huggingface_hub
+pip install -r requirements.txt  # Python 3.11, torch CUDA 11.8 (đổi cu118 trong file nếu driver khác)
+# tuỳ chọn: requirements-dev.txt (pytest), requirements-crawl.txt (tự crawl lại corpus)
 
-cp .env.example .env            # điền HF_TOKEN, QDRANT_URL, ... (xem .env.example)
-docker run -d --name qdrant -p 6333:6333 -v qdrant_storage:/qdrant/storage qdrant/qdrant
+cp .env.example .env            # điền QDRANT_URL; HF_TOKEN chỉ cần nếu repo HF là private
+# Qdrant ghim đúng bản đã dùng (khớp qdrant-client 1.19.1)
+docker run -d --name qdrant -p 6333:6333 -v qdrant_storage:/qdrant/storage qdrant/qdrant:v1.19.2
 ```
 
 ### 1. Có corpus

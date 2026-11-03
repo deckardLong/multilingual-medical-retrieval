@@ -9,6 +9,7 @@ from corpus_sync.hf import fetch, place, plan
 def no_network(tmp_path, monkeypatch):
     staging = tmp_path / "staging"
     monkeypatch.setattr(hf_module, "STAGING", staging)
+    monkeypatch.setenv("R2AI_DERIVED_DIR", str(tmp_path / "derived"))   # không để fetch() ghi vào derived/ thật
     calls = []
 
     def fake_snapshot_download(repo_id, *, repo_type, revision, local_dir, allow_patterns, max_workers, token,
@@ -24,6 +25,9 @@ def no_network(tmp_path, monkeypatch):
         (local_dir / "corpus" / "raw" / "links_corpus.parquet").write_bytes(b"links")
         (local_dir / "queries").mkdir(parents=True, exist_ok=True)
         (local_dir / "queries" / "query.parquet").write_bytes(b"queries")
+        vec = local_dir / "derived" / "vectors" / "bge-m3-v1-x" / "viz" / "docs" / "a"
+        vec.mkdir(parents=True, exist_ok=True)
+        (vec / "viz-a-00001.parquet").write_bytes(b"vectors")
         return local_dir
 
     monkeypatch.setattr(hf_module, "snapshot_download", fake_snapshot_download)
@@ -37,6 +41,14 @@ def test_fetch_places_corpus_and_queries_at_their_configured_destinations(sync_c
     assert (env.r2ai_corpus_dir / "viz" / "docs" / "a" / "viz-a-00001.jsonl.zst").read_bytes() == b"shard-noi-dung"
     assert (env.r2ai_corpus_dir / "raw" / "links_corpus.parquet").read_bytes() == b"links"
     assert (tmp_path / "my_queries" / "query.parquet").read_bytes() == b"queries"
+
+
+def test_fetch_places_precomputed_vectors_under_the_derived_dir(sync_cfg, tmp_path, no_network):
+    from common.config import Env
+    env = Env(r2ai_corpus_dir=tmp_path / "c", r2ai_derived_dir=tmp_path / "d")
+    fetch(sync_cfg, env, queries_dir=tmp_path / "q")
+    assert (env.r2ai_derived_dir / "vectors" / "bge-m3-v1-x" / "viz" / "docs" / "a" / "viz-a-00001.parquet").read_bytes() == b"vectors"
+    assert not (env.r2ai_corpus_dir / "derived").exists()
 
 
 def test_fetch_passes_repo_id_patterns_and_token_through(sync_cfg, tmp_path, no_network):

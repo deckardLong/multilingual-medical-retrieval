@@ -7,19 +7,19 @@ decompose:
 
 # Search
 search:
-  k_dense: 100
-  k_sparse: 100
-  k_fuse: 60
-  k_pool: 80
+  k_dense: 200
+  k_sparse: 200
+  k_fuse: 150       # mỗi truy vấn con; câu không tách ý thì pool bị chặn ở đây (trước là 60)
+  k_pool: 150       # mỗi câu có ~50–60 doc đúng (suy từ điểm leaderboard) nên cần pool sâu; rerank chỉ top_n (rerank.yaml)
   langs: null
   rrf_k: 60
-  hnsw_ef: 128
-  rescore: true
+  hnsw_ef: 200      # >= k_dense
+  rescore: false    # vector gốc nằm trên HDD; rescore đọc ngẫu nhiên từ đĩa → ~20s/truy vấn
   oversampling: 2.0
 
 # Select
 select:
-  max_docs: 10
+  max_docs: 150     # = k_pool, tức lấy mọi doc trong pool. F2 nặng recall: 9 doc/câu → F2 doc 0,058; 29 → 0,104; cả pool (45) → 0,109 (leaderboard 25/10)
   min_score: null
-  rel_drop: 0.5
-  chunks_per_doc: 3
+  rel_drop: null
+  chunks_per_doc: 2

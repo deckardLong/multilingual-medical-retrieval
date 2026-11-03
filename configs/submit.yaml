@@ -2,10 +2,15 @@
 candidates_path: candidates/latest.jsonl   # đầu ra của retrieval (hợp đồng C2)
 output_dir: submissions
 json_name: submission.json                 # tên file duy nhất nằm trong zip (không thư mục con)
+int_doc_ids: true                          # BTC chấm doc_id dạng số (196977); dạng chuỗi ("196977") bị 0 điểm
+max_zip_mb: 99                             # BTC: file nộp phải dưới 100 MB (tính theo 10^6 byte, chừa 1 MB)
 
 build:
   max_docs: null                           # null: lấy đúng số doc mà bước select đã chọn
-  max_chunks: null                         # null: lấy hết chunk đã chọn của mỗi truy vấn
+  max_chunks: 90                           # giữ file < 100 MB khi nới 600 từ (chunk điểm cao giữ trước)
+  expand_to_words: 600                     # leaderboard 28/10: 110 từ → F2 chunk 0,010; 250 → 0,039; 400 → 0,084; 600 → 0,102; 800 → 0,100
+  split_max_words: null                    # tắt: đoạn 40 từ gần như không bao giờ khớp (bản D: F2 chunk 0,0002) → đáp án dài
+  keep_full_chunk: true
 
 check:
   btc_ids_path: corpus/raw/links_corpus.parquet         # danh sách {id, url} của BTC; để kiểm tra doc_id tiếng Việt/Trung
